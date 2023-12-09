@@ -194,7 +194,7 @@ int main(void){
 
             if (ynchar == 'n'){
                 close(sockfd);
-                exit(-1);
+                exit(EXIT_FAILURE);
             }
 
             // receive success registration message

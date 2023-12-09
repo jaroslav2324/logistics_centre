@@ -34,3 +34,6 @@
 # binary
 client
 server
+
+.vscode
+build

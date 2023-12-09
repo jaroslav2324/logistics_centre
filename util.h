@@ -56,16 +56,18 @@ typedef enum order_status{
 } order_status;
 
 typedef struct order{
-    int idx; // order index ?? as a primary key :)
+    //int idx; 
+    int receiver_id;
     order_status status;
-    char receiver[USERNAME_LEN];
-    char receiver_address[ADDRESS_LEN]; // needed???
-    char current_address[ADDRESS_LEN]; // needed?? what if moving somewhere in the current moment?
-    char content[CONTENT_SIZE]; // delivering this
+    char destination[64];
+    char position[64];
+    char content[64];
 } order;
 
 typedef struct user_record {
+    int id;
     char user_name[USERNAME_LEN];
     char password[PASSWORD_LEN];
     user_type type;
 } user_record;
+
