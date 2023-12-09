@@ -28,17 +28,23 @@ typedef enum msg_types{
     REGISTRATION,
     FORBIDDEN,
     EXITING,
+    AUTH_SUCCESS,
     CREATE_ORDER, // worker creates order
     UPDATE_ORDER, // worker updates order
     DELETE_ORDER, // worker deletes order???
     GET_ORDERS_STATUS // user requests info about all orders???
 } msg_types;
 
+typedef enum user_type {
+    CONSUMER,
+    WORKER
+} user_type;
+
 typedef struct message{
     msg_types msg_type;
     char username[USERNAME_LEN];
     char text[MSG_BUFF_SIZE];
-    
+    user_type user_type;
 } message;
 
 
@@ -58,13 +64,10 @@ typedef struct order{
     char content[CONTENT_SIZE]; // delivering this
 } order;
 
-typedef enum user_type {
-    CONSUMER,
-    WORKER
-} user_type;
+
 
 typedef struct user_record {
     char user_name[USERNAME_LEN];
     char password[PASSWORD_LEN];
-    user_type isWorker;
+    user_type type;
 } user_record;

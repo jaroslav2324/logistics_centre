@@ -144,18 +144,17 @@ int main(void){
         strcpy(username, msg.username);
         printf("You entered: %s\n", msg.username);
         printf("Enter password: ");
-        fgets(msg.text, MSG_BUFF_SIZE, stdin);
+        fgets(msg.text, PASSWORD_LEN, stdin);
         printf("You entered: %s\n", msg.text);
-        
         msg.msg_type = MSG_AUTH;
         send(sockfd, &msg, sizeof(msg), 0);
     } else {
         printf("Error!\n");
         exit(EXIT_FAILURE);
     }
-    recv(sockfd, &msg, sizeof(msg), 0);
 
-    //printf("%s\n", msg.text);
+
+    recv(sockfd, &msg, sizeof(msg), 0);
 
     switch (msg.msg_type)
     {
@@ -183,35 +182,43 @@ int main(void){
             }
             msg.msg_type = REGISTRATION;
             strcpy(msg.username, username);
+            // read type of user
+            printf("Enter your type: 1 - worker; 0 - comsumer\n");
+            char strbuf[4];
+            fgets(strbuf, sizeof(strbuf), stdin);
+            msg.user_type = strbuf[0] - '0';
+            printf("You entered: %i\n", msg.user_type);
+
             // sending y or n
             send(sockfd, &msg, sizeof(msg), 0);
+
             if (ynchar == 'n'){
                 close(sockfd);
                 exit(-1);
             }
+
+            // receive success registration message
             recv(sockfd, &msg, sizeof(msg), 0);
-            //TODO i_am_worker_flg = msg.text[0] 
             printf("%s", msg.text);
-            send(sockfd, &msg, sizeof(msg), 0);
+            //TODO i_am_worker_flg = isWorker
+
         break;
 
         case FORBIDDEN:
             printf("%s", msg.text);
-            exit(-1);
+            close(sockfd);
+            exit(EXIT_FAILURE);
         break;
 
-        // ! REPLACE
-        case MSG_TRANSFER_MSG:
+        case AUTH_SUCCESS:
+            i_am_worker_flg = msg.user_type;
             printf("%s", msg.text);
-            send(sockfd, &msg, sizeof(msg), 0);
         break;
 
-
-    default:
+        default:
         break;
     }
 
-    //TODO set i_am_worker_flag
 
     if (i_am_worker_flg){
         worker_loop();
