@@ -3,9 +3,9 @@
 void *user_thread(void *data);
 user_record check_users_credentials(char* login, char* password);
 int write_order_to_file(order order);
-int write_user_to_file(char* login, char* password, user_type isWorker);
+int write_user_to_file(user_record user);
 
-// TODO: need to find username in file userdb.txt and return 1, else return 0
+// TODO: need to find username in file usersdb.txt and return 1, else return 0
 // example of record about one user in file
 // usersdb.txt
 // name_of_user
@@ -82,7 +82,7 @@ int main(int argc, char* argv[]) {
             printf("Error when accept connection with sock2!\n");
             exit(EXIT_FAILURE);
         } else {
-            printf("Connection done!\n");
+            printf("\nConnection done!\n");
         }
 
         pthread_create(&thread, NULL, user_thread, (void*)&sock2);
@@ -105,8 +105,8 @@ void *user_thread(void *param) {
     message message;
     recv(sock2, &message, sizeof(message), 0);
 
-    printf("Username: %s", message.username);
-    printf("Password: %s\n", message.text);
+    printf("\nUsername: %s", message.username);
+    printf("Password: %s", message.text);
     printf("User socket fd: %d\n", sock2);
     
     user_record user = check_users_credentials(message.username, message.text);
@@ -114,7 +114,8 @@ void *user_thread(void *param) {
     if (STREQU(user.user_name, message.username)) {
         if (STREQU(user.password, message.text)) {
             strcpy(message.text, "Successfully authorization!\n");
-            printf("Successfully authorization of %s", message.username);
+            message.username[strlen(message.username) - 1] = '\0';
+            printf("Successfully authorization of %s!\n", message.username);
             message.msg_type = AUTH_SUCCESS;
             message.user_type = user.type; // 
             send(sock2, &message, sizeof(message), 0);
@@ -122,7 +123,7 @@ void *user_thread(void *param) {
         } else {
             strcpy(message.text, "Wrong password entered!\n");
             message.username[strlen(message.username) - 1] = '\0';
-            printf("User %s entered a wrong password!\n", message.username);
+            printf("User %s entered a wrong password! Bye-bye..\n", message.username);
             message.msg_type = FORBIDDEN;
             send(sock2, &message, sizeof(message), 0);
             shutdown(sock2, SHUT_RDWR);
@@ -130,10 +131,8 @@ void *user_thread(void *param) {
             pthread_exit(NULL);
         }
     } else {
-        char login_from_user[USERNAME_LEN];
-        strcpy(login_from_user, message.username);
-        char password_from_user[PASSWORD_LEN];
-        strcpy(password_from_user, message.text);
+        strcpy(user.user_name, message.username);
+        strcpy(user.password, message.text);
 
         strcpy(message.text, "You're not registered! Do you want to register?(Y/N)\n");
         message.msg_type = REGISTRATION;
@@ -141,16 +140,17 @@ void *user_thread(void *param) {
 
         // wating answer from client
         recv(sock2, &message, sizeof(message), 0);
-        user_type isWorker = message.user_type;
+        user.type = message.user_type;
 
         if (strcmp(message.text, "y") == 0) {
-            write_user_to_file(login_from_user, password_from_user, isWorker);
+            write_user_to_file(user);
             printf("Success registration!\n");
             strcpy(message.text, "Success registration!\n");
             send(sock2, &message, sizeof(message), 0);
             
         } else {
-            printf("User doesn't want register on server!\n");
+            message.username[strlen(message.username) - 1] = '\0';
+            printf("User %s doesn't want register on server!\n", message.username);
             shutdown(sock2, SHUT_RDWR);
             close(sock2);
             pthread_exit(NULL);
@@ -168,7 +168,7 @@ void *user_thread(void *param) {
                 printf("Username of receiver: %s", message.order.username_of_receiver);
                 printf("Destination: %s", message.order.destination);
                 printf("Position: %s", message.order.position);
-                printf("Content about item: %s", message.order.content);
+                printf("Content about item: %s\n", message.order.content);
                 message.order.status = CREATED;
                 
                 int code = check_user_name(message.order.username_of_receiver);
@@ -240,10 +240,10 @@ user_record check_users_credentials(char* login, char* password) {
     return user;
 }
 
-int write_user_to_file(char* login, char* password, user_type isWorker) {
+int write_user_to_file(user_record user) {
     FILE* file;
     file = fopen("usersdb.txt", "a");
-    fprintf(file, "%s%s%d\n", login, password, isWorker);
+    fprintf(file, "%s%s%d\n", user.user_name, user.password, user.type);
     fclose(file);
     return 1;
 }
