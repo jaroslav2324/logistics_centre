@@ -2,6 +2,7 @@
 #include <bits/pthreadtypes.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/socket.h>
 
 // write order to db using order structure
 int write_order(order* order);
@@ -10,7 +11,12 @@ int update_order(int order_idx, order* order);
 
 void *user_thread(void *data);
 user_record check_users_credentials(char* login, char* password);
-int write_to_file(char* login, char* password, user_type isWorker);
+int write__user_to_file(char* login, char* password, user_type isWorker);
+order* get_orders_for_user(int id_of_user);
+int get_id_of_user_from_username(char* username);
+int write_order_to_file(order order);
+int check_user_name(char* username);
+int get_count_of_orders(int id_of_user);
 
 pthread_mutex_t mutex;
 
@@ -146,11 +152,40 @@ void *user_thread(void *param) {
     } else if (user.type == CONSUMER) {
         while (1) {
             recv(sock2, &message, sizeof(message), 0);
+
             if (message.msg_type == CREATE_ORDER) {
-                order user_order = message.order;
-                
+                printf("Username if receiver: %s", message.order.username_of_receiver);
+                printf("Destination: %s", message.order.destination);
+                printf("Position: %s", message.order.position);
+                printf("Content about item : %s", message.order.content);
+                message.order.status = CREATED;
+                //TODO: check username for correctness
+                int code = check_user_name(message.order.username_of_receiver);
+                if (code) {
+                    code = write_order_to_file(message.order);
+                    message.msg_type = OK;
+                    send(sock2, &message, sizeof(message), 0);
+                } else {
+                    message.msg_type = BAD;
+                    send(sock2, &message, sizeof(message), 0);
+                }
+
+            } else if (message.msg_type == GET_ORDERS_STATUS) {
+                //TODO: get count of orders for user from logisticdb.txt and then send it to user
+                int id_of_user = get_id_of_user_from_username(message.username);
+                int count_of_orders = get_count_of_orders(id_of_user);
+                order* orders = get_orders_for_user(id_of_user);
+
+                //message.text = count_of_orders
+                send(sock2, &message, sizeof(message), 0);
+
+                for (int i = 0; i < count_of_orders; ++i) {
+                    send(sock2, &message, sizeof(message), 0);
+                }
+                //TODO: free memmory for orders
             }
         }
+
     } else {
         printf("Server doesnt support this type!\n");
         close(sock2);
@@ -189,10 +224,18 @@ user_record check_users_credentials(char* login, char* password) {
     return user;
 }
 
-int write_to_file(char* login, char* password, user_type isWorker) {
+int write__user_to_file(char* login, char* password, user_type isWorker) {
     FILE* file;
-    file = fopen("db.txt", "a");
+    file = fopen("userdb.txt", "a");
     fprintf(file, "%s%s%d\n", login, password, isWorker);
+    fclose(file);
+    return 1;
+}
+
+int write_order_to_file(order order) {
+    FILE* file;
+    file = fopen("order.txt", "a");
+    fprintf(file, "%s%s%d\n", order.username_of_receiver, , isWorker);
     fclose(file);
     return 1;
 }

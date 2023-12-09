@@ -29,8 +29,8 @@ typedef enum msg_types{
     FORBIDDEN,
     EXITING,
     AUTH_SUCCESS,
-    OK, // server mark message if all ok
-    BAD, 
+    OK, // server marks message if all ok
+    BAD, // server marks message if not ok
     CREATE_ORDER, // worker creates order
     UPDATE_ORDER, // worker updates order
     DELETE_ORDER, // worker deletes order???
@@ -49,6 +49,7 @@ typedef enum order_status{
     DELIVERED // user has taken order
 } order_status;
 
+// TODO: user write 
 typedef struct order{
     //int idx; 
     char username_of_receiver[USERNAME_LEN];
