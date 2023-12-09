@@ -9,8 +9,8 @@ int write_order(order* order);
 int update_order(int order_idx, order* order);
 
 void *user_thread(void *data);
-int write_to_file(char* login, char* password);
 user_record check_users_credentials(char* login, char* password);
+int write_to_file(char* login, char* password, user_type isWorker);
 
 pthread_mutex_t mutex;
 
@@ -94,16 +94,11 @@ void *user_thread(void *param) {
 
     if (STREQU(user.user_name, message.username)) {
         if (STREQU(user.password, message.text)) {
-
             strcpy(message.text, "Successfully authorization!\n");
             printf("Successfully authorization of %s", message.username);
-            message.msg_type = MSG_TRANSFER_MSG;
+            message.msg_type = AUTH_SUCCESS;
+            message.user_type = user.type; // 
             send(sock2, &message, sizeof(message), 0);
-
-            recv(sock2, &message, sizeof(message), 0); // waiting for client socket for direct messaging
-            printf("Client addr: %s\n", inet_ntoa(message.client_socket.sin_addr));
-            printf("Client addr with func: %u\n", ntohs(message.client_socket.sin_port));
-            client_socket = message.client_socket;
 
         } else {
             strcpy(message.text, "Wrong password entered!\n");
@@ -111,17 +106,14 @@ void *user_thread(void *param) {
             printf("User %s entered a wrong password!\n", message.username);
             message.msg_type = FORBIDDEN;
             send(sock2, &message, sizeof(message), 0);
-            pthread_mutex_lock(&mutex);
-            cnt_of_threads--;
-            pthread_mutex_unlock(&mutex);
             shutdown(sock2, SHUT_RDWR);
             close(sock2);
             pthread_exit(NULL);
         }
     } else {
-        char login_from_user[32];
+        char login_from_user[USERNAME_LEN];
         strcpy(login_from_user, message.username);
-        char password_from_user[256];
+        char password_from_user[PASSWORD_LEN];
         strcpy(password_from_user, message.text);
 
         strcpy(message.text, "You're not registered! Do you want to register?(Y/N)\n");
@@ -130,22 +122,16 @@ void *user_thread(void *param) {
 
         // wating asnwer from client
         recv(sock2, &message, sizeof(message), 0);
+        user_type isWorker = message.user_type;
+
         if (strcmp(message.text, "y") == 0) {
-            write_to_file(login_from_user, password_from_user);
+            write_to_file(login_from_user, password_from_user, isWorker);
             printf("Success registration!\n");
             strcpy(message.text, "Success registration!\n");
             send(sock2, &message, sizeof(message), 0);
 
-            recv(sock2, &message, sizeof(message), 0); // waiting for client socket for direct messaging
-
-            printf("Client direct addr: %s\n", inet_ntoa(message.client_socket.sin_addr));
-            printf("Client direct port: %u\n", ntohs(message.client_socket.sin_port));
-            client_socket = message.client_socket;
         } else {
             printf("User doesn't want register on server!\n");
-            pthread_mutex_lock(&mutex);
-            cnt_of_threads--;
-            pthread_mutex_unlock(&mutex);
             shutdown(sock2, SHUT_RDWR);
             close(sock2);
             pthread_exit(NULL);
@@ -165,7 +151,7 @@ user_record check_users_credentials(char* login, char* password) {
         fgets(user.password, PASSWORD_LEN, file);
         char temp[2];
         fgets(temp, 2, file);
-        user.isWorker = temp[0] - '0';
+        user.type = temp[0] - '0';
         if (STREQU(login, user.user_name)) {
             if (STREQU(password, user.password)) {
                 fclose(file);
@@ -180,10 +166,10 @@ user_record check_users_credentials(char* login, char* password) {
     return user;
 }
 
-int write_to_file(char* login, char* password) {
+int write_to_file(char* login, char* password, user_type isWorker) {
     FILE* file;
     file = fopen("db.txt", "a");
-    fprintf(file, "%s%s", login, password);
+    fprintf(file, "%s%s%d", login, password, isWorker);
     fclose(file);
     return 1;
 }
