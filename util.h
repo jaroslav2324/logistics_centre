@@ -12,6 +12,7 @@
 #include <time.h>
 
 #define USERNAME_LEN 32
+#define PASSWORD_LEN 32
 #define ADDRESS_LEN 128
 #define CONTENT_SIZE 128
 
@@ -20,6 +21,7 @@
 
 #define SERVER_PORT 48124
 #define SERVER_ADDR "192.168.202.48"//"127.0.0.1"
+#define STREQU(a,b)	(strcmp(a, b) == 0)
 
 typedef enum msg_types{
     MSG_AUTH, 
@@ -36,6 +38,7 @@ typedef struct message{
     msg_types msg_type;
     char username[USERNAME_LEN];
     char text[MSG_BUFF_SIZE];
+    
 } message;
 
 
@@ -54,3 +57,14 @@ typedef struct order{
     char current_address[ADDRESS_LEN]; // needed?? what if moving somewhere in the current moment?
     char content[CONTENT_SIZE]; // delivering this
 } order;
+
+typedef enum user_type {
+    CONSUMER,
+    WORKER
+} user_type;
+
+typedef struct user_record {
+    char user_name[USERNAME_LEN];
+    char password[PASSWORD_LEN];
+    user_type isWorker;
+} user_record;
