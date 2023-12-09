@@ -64,13 +64,7 @@ typedef struct message{
     user_type user_type;
 } message;
 
-
-
-
-
-
 typedef struct user_record {
-    int id;
     int id;
     char user_name[USERNAME_LEN];
     char password[PASSWORD_LEN];
