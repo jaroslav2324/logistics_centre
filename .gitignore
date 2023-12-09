@@ -35,5 +35,5 @@
 client
 server
 
-./vscode
+.vscode
 build

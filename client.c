@@ -37,11 +37,21 @@ void user_loop(){
             break;
 
             case 'n':
-
-            // TODO 
-            // send
-            // send(sockfd, &msg, sizeof(msg), 0);
-            
+            {   
+                // enter username of receiver
+                strcpy(msg.username, username);
+                fgets(msg.text, MSG_BUFF_SIZE, stdin);
+                // enter other order data
+                printf("Enter delivery destination:\n");
+                fgets(msg.order.destination, 64, stdin);
+                printf("Enter current delivery position:\n");
+                fgets(msg.order.position, 64, stdin);
+                printf("Enter delivery content^\n");
+                fgets(msg.order.content, 64, stdin);
+                // send
+                msg.msg_type = CREATE_ORDER;
+                send(sockfd, &msg, sizeof msg, 0);
+            }
             break;
 
             //request my delivery from server
@@ -161,7 +171,9 @@ int main(void){
         case REGISTRATION:
             printf("%s", msg.text);
             char ynflag = 0;
-            char ynchar;
+            char ynchar;   
+
+            // enter y/n
             while(!ynflag){
                 // read first character
                 ynchar = getchar();
@@ -194,14 +206,17 @@ int main(void){
 
             if (ynchar == 'n'){
                 close(sockfd);
-                exit(-1);
+                exit(EXIT_FAILURE);
             }
 
             // receive success registration message
             recv(sockfd, &msg, sizeof(msg), 0);
             printf("%s", msg.text);
-            //TODO i_am_worker_flg = isWorker
 
+            if (msg.user_type == WORKER)
+                i_am_worker_flg = 1;
+            else
+                i_am_worker_flg = 0;
         break;
 
         case FORBIDDEN:

@@ -47,17 +47,33 @@ typedef enum order_status{
     DELIVERED // user has taken order
 } order_status;
 
+typedef struct order{
+    //int idx; 
+    int receiver_id;
+    order_status status;
+    char destination[64];
+    char position[64];
+    char content[64];
+} order;
+
 typedef struct message{
     msg_types msg_type;
     char username[USERNAME_LEN];
     char text[MSG_BUFF_SIZE];
-    user_type user_type;
     order order;
+    user_type user_type;
 } message;
 
+
+
+
+
+
 typedef struct user_record {
+    int id;
     int id;
     char user_name[USERNAME_LEN];
     char password[PASSWORD_LEN];
     user_type type;
 } user_record;
+
