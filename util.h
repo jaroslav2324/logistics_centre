@@ -40,14 +40,6 @@ typedef enum user_type {
     WORKER
 } user_type;
 
-typedef struct message{
-    msg_types msg_type;
-    char username[USERNAME_LEN];
-    char text[MSG_BUFF_SIZE];
-    user_type user_type;
-} message;
-
-
 typedef enum order_status{
     CREATED,
     MOVING, // more statuses???
@@ -55,16 +47,16 @@ typedef enum order_status{
     DELIVERED // user has taken order
 } order_status;
 
-typedef struct order{
-    int idx; // order index ?? as a primary key :)
-    order_status status;
-    char receiver[USERNAME_LEN];
-    char receiver_address[ADDRESS_LEN]; // needed???
-    char current_address[ADDRESS_LEN]; // needed?? what if moving somewhere in the current moment?
-    char content[CONTENT_SIZE]; // delivering this
-} order;
+typedef struct message{
+    msg_types msg_type;
+    char username[USERNAME_LEN];
+    char text[MSG_BUFF_SIZE];
+    user_type user_type;
+    order order;
+} message;
 
 typedef struct user_record {
+    int id;
     char user_name[USERNAME_LEN];
     char password[PASSWORD_LEN];
     user_type type;

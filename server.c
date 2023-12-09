@@ -44,7 +44,7 @@ int main(int argc, char* argv[]) {
 
     printf("Server is running on addr: %s\n", SERVER_ADDR);
 
-     pthread_t thread;
+    pthread_t thread;
     while (1) {
         codeErr = listen(sock1, 3);
         if (codeErr == -1) {
@@ -89,8 +89,9 @@ void *user_thread(void *param) {
     printf("Username: %s", message.username);
     printf("Password: %s\n", message.text);
     printf("User socket fd: %d\n", sock2);
-
+    
     user_record user = check_users_credentials(message.username, message.text);
+    int id_of_user_from_db;
 
     if (STREQU(user.user_name, message.username)) {
         if (STREQU(user.password, message.text)) {
@@ -99,7 +100,7 @@ void *user_thread(void *param) {
             message.msg_type = AUTH_SUCCESS;
             message.user_type = user.type; // 
             send(sock2, &message, sizeof(message), 0);
-
+            id_of_user_from_db = user.id;
         } else {
             strcpy(message.text, "Wrong password entered!\n");
             message.username[strlen(message.username) - 1] = '\0';
@@ -125,17 +126,35 @@ void *user_thread(void *param) {
         user_type isWorker = message.user_type;
 
         if (strcmp(message.text, "y") == 0) {
+            //TODO: read last id of user from file and then will do id + 1 for new user
+            // write func for it
             write_to_file(login_from_user, password_from_user, isWorker);
             printf("Success registration!\n");
             strcpy(message.text, "Success registration!\n");
             send(sock2, &message, sizeof(message), 0);
-
+            id_of_user_from_db = user.id;
         } else {
             printf("User doesn't want register on server!\n");
             shutdown(sock2, SHUT_RDWR);
             close(sock2);
             pthread_exit(NULL);
         }
+    }
+
+    if (user.type == WORKER) {
+        
+    } else if (user.type == CONSUMER) {
+        while (1) {
+            recv(sock2, &message, sizeof(message), 0);
+            if (message.msg_type == CREATE_ORDER) {
+                order user_order = message.order;
+                
+            }
+        }
+    } else {
+        printf("Server doesnt support this type!\n");
+        close(sock2);
+        pthread_exit(NULL);
     }
 }
 
@@ -144,18 +163,22 @@ void *user_thread(void *param) {
 user_record check_users_credentials(char* login, char* password) {
     FILE* file;
     file = fopen("usersdb.txt", "r");
-    char buf[MSG_BUFF_SIZE];
-    int i = 0;
+    // char buf[MSG_BUFF_SIZE];
+    // int i = 0;
     user_record user;
     while ((fgets(user.user_name, USERNAME_LEN, file)) != NULL) {
         fgets(user.password, PASSWORD_LEN, file);
-        char temp[2];
-        fgets(temp, 2, file);
+        char temp[4];
+        fgets(temp, 4, file);
         user.type = temp[0] - '0';
         if (STREQU(login, user.user_name)) {
             if (STREQU(password, user.password)) {
                 fclose(file);
                 return user;
+            } else {
+                memset(user.password, '\0', sizeof(user.password));
+                fclose(file);
+                return user; 
             }
         } 
     }
@@ -169,7 +192,7 @@ user_record check_users_credentials(char* login, char* password) {
 int write_to_file(char* login, char* password, user_type isWorker) {
     FILE* file;
     file = fopen("db.txt", "a");
-    fprintf(file, "%s%s%d", login, password, isWorker);
+    fprintf(file, "%s%s%d\n", login, password, isWorker);
     fclose(file);
     return 1;
 }
