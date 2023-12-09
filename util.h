@@ -64,8 +64,6 @@ typedef struct order{
     char content[CONTENT_SIZE]; // delivering this
 } order;
 
-
-
 typedef struct user_record {
     char user_name[USERNAME_LEN];
     char password[PASSWORD_LEN];
