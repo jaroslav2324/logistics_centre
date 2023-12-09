@@ -27,10 +27,6 @@ order* get_orders_for_user(char* username);
 // TODO: find count of orders for user by username
 int get_count_of_orders(char* username);
 
-// write order to db using order structure
-// POKA NE NADO
-int write_order(order* order);
-
 // replace order with idx to new order
 // POKA NE NADO
 int update_order(int order_idx, order* order);
