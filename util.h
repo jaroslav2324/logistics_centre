@@ -40,14 +40,6 @@ typedef enum user_type {
     WORKER
 } user_type;
 
-typedef struct message{
-    msg_types msg_type;
-    char username[USERNAME_LEN];
-    char text[MSG_BUFF_SIZE];
-    user_type user_type;
-} message;
-
-
 typedef enum order_status{
     CREATED,
     MOVING, // more statuses???
@@ -63,6 +55,19 @@ typedef struct order{
     char position[64];
     char content[64];
 } order;
+
+typedef struct message{
+    msg_types msg_type;
+    char username[USERNAME_LEN];
+    char text[MSG_BUFF_SIZE];
+    order order;
+    user_type user_type;
+} message;
+
+
+
+
+
 
 typedef struct user_record {
     int id;
