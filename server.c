@@ -11,7 +11,7 @@ int update_order(int order_idx, order* order);
 
 void *user_thread(void *data);
 user_record check_users_credentials(char* login, char* password);
-int write__user_to_file(char* login, char* password, user_type isWorker);
+int write_user_to_file(char* login, char* password, user_type isWorker);
 order* get_orders_for_user(int id_of_user);
 int get_id_of_user_from_username(char* username);
 int write_order_to_file(order order);
@@ -134,7 +134,7 @@ void *user_thread(void *param) {
         if (strcmp(message.text, "y") == 0) {
             //TODO: read last id of user from file and then will do id + 1 for new user
             // write func for it
-            write_to_file(login_from_user, password_from_user, isWorker);
+            write_user_to_file(login_from_user, password_from_user, isWorker);
             printf("Success registration!\n");
             strcpy(message.text, "Success registration!\n");
             send(sock2, &message, sizeof(message), 0);
@@ -160,7 +160,7 @@ void *user_thread(void *param) {
                 printf("Content about item : %s", message.order.content);
                 message.order.status = CREATED;
                 //TODO: check username for correctness
-                int code = check_user_name(message.order.username_of_receiver);
+                int code = 1;//check_user_name(message.order.username_of_receiver);
                 if (code) {
                     code = write_order_to_file(message.order);
                     message.msg_type = OK;
@@ -224,7 +224,7 @@ user_record check_users_credentials(char* login, char* password) {
     return user;
 }
 
-int write__user_to_file(char* login, char* password, user_type isWorker) {
+int write_user_to_file(char* login, char* password, user_type isWorker) {
     FILE* file;
     file = fopen("userdb.txt", "a");
     fprintf(file, "%s%s%d\n", login, password, isWorker);
@@ -234,8 +234,14 @@ int write__user_to_file(char* login, char* password, user_type isWorker) {
 
 int write_order_to_file(order order) {
     FILE* file;
-    file = fopen("order.txt", "a");
-    fprintf(file, "%s%s%d\n", order.username_of_receiver, , isWorker);
+    file = fopen("orders.txt", "a");
+    fprintf(file, "%s%d%s%s%s\n", order.username_of_receiver, order.status, order.destination, 
+    order.position, order.content);
     fclose(file);
     return 1;
 }
+
+order* get_orders_for_user(int id_of_user) {return NULL;}
+int get_id_of_user_from_username(char* username) {return 1;}
+int check_user_name(char* username) {return 1;}
+int get_count_of_orders(int id_of_user) {return 1;}
