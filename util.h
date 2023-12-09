@@ -19,17 +19,17 @@
 //#define USER_NUMBER 3
 
 #define SERVER_PORT 48124
-#define SERVER_ADDR "192.168.29.167"//"127.0.0.1"
+#define SERVER_ADDR "192.168.202.48"//"127.0.0.1"
 
 typedef enum msg_types{
-MSG_AUTH, 
-REGISTRATION,
-FORBIDDEN,
-EXITING,
-CREATE_ORDER, // worker creates order
-UPDATE_ORDER, // worker updates order
-DELETE_ORDER, // worker deletes order???
-GET_ORDERS_STATUS // user requests info about all orders???
+    MSG_AUTH, 
+    REGISTRATION,
+    FORBIDDEN,
+    EXITING,
+    CREATE_ORDER, // worker creates order
+    UPDATE_ORDER, // worker updates order
+    DELETE_ORDER, // worker deletes order???
+    GET_ORDERS_STATUS // user requests info about all orders???
 } msg_types;
 
 typedef struct message{
