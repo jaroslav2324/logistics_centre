@@ -1,5 +1,6 @@
 
 #include "util.h"
+#include <unistd.h>
 
 int sockfd;
 
@@ -38,7 +39,8 @@ void user_loop(){
             {   
                 strcpy(msg.username, username);
                 // enter username of receiver
-                fgets(msg.order.username_of_receiver, MSG_BUFF_SIZE, stdin);
+                printf("Enter username of receiver:\n");
+                fgets(msg.order.username_of_receiver, USERNAME_LEN, stdin);
                 // enter other order data
                 printf("Enter delivery destination:\n");
                 fgets(msg.order.destination, 64, stdin);
@@ -91,6 +93,7 @@ void user_loop(){
             strcpy(msg.username, username);
             send(sockfd, &msg, sizeof(msg), 0);
             exitflag = 1;
+            close(sockfd);
             break;
 
             default:
