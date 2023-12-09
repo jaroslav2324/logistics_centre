@@ -261,10 +261,6 @@ order* get_orders_for_user(char* username) {
     return NULL;
 }
 
-int get_id_of_user_from_username(char* username) {
-    return 1;
-}
-
 int check_user_name(char* username) {
     return 1;
 }
