@@ -38,7 +38,7 @@ void user_loop(){
             {   
                 strcpy(msg.username, username);
                 // enter username of receiver
-                fgets(msg.order.username_of_receiver, MSG_BUFF_SIZE, stdin);
+                fgets(msg.order.username_of_receiver, USERNAME_LEN, stdin);
                 // enter other order data
                 printf("Enter delivery destination:\n");
                 fgets(msg.order.destination, 64, stdin);

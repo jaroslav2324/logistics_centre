@@ -74,3 +74,9 @@ typedef struct user_record {
     user_type type;
 } user_record;
 
+typedef struct warehouse_record {
+    int id;
+    char position[USERNAME_LEN];
+    
+} warehouse_record;
+
