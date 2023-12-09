@@ -1,8 +1,6 @@
 
 #include "util.h"
 
-#define MY_ADDR "127.0.0.1"
-
 int sockfd;
 
 int i_am_worker_flg = 0;
@@ -38,29 +36,53 @@ void user_loop(){
 
             case 'n':
             {   
-                // enter username of receiver
                 strcpy(msg.username, username);
-                fgets(msg.text, MSG_BUFF_SIZE, stdin);
+                // enter username of receiver
+                fgets(msg.order.username_of_receiver, MSG_BUFF_SIZE, stdin);
                 // enter other order data
                 printf("Enter delivery destination:\n");
                 fgets(msg.order.destination, 64, stdin);
                 printf("Enter current delivery position:\n");
                 fgets(msg.order.position, 64, stdin);
-                printf("Enter delivery content^\n");
+                printf("Enter delivery content:\n");
                 fgets(msg.order.content, 64, stdin);
                 // send
                 msg.msg_type = CREATE_ORDER;
                 send(sockfd, &msg, sizeof msg, 0);
+
+                // wait server to handle data
+                recv(sockfd, &msg, sizeof msg, 0);
+                if (msg.msg_type == OK){
+                    // TODO print everything good
+                    printf("Everything is ok");
+                }
+                else {
+                    // TODO print everything bad
+                    printf("Everything is bad");
+                }
             }
             break;
 
             //request my delivery from server
             case 'o':
-
-            // TODO 
-            // send
-            //send(sockfd, &msg, sizeof(msg), 0);
             
+            msg.msg_type = GET_ORDERS_STATUS;
+            send(sockfd, &msg, sizeof msg, 0);
+
+            // wait for response
+            recv(sockfd, &msg, sizeof msg, 0);
+            int amount_of_orders;
+            // ! ну две циферки не будет говорил Николай
+            amount_of_orders = atoi(msg.text);
+
+            for (int cnt = 0; cnt < amount_of_orders; cnt++){
+                recv(sockfd, &msg, sizeof msg, 0);
+                printf("Order %2i:", cnt + 1);
+                
+                printf("Status - %i, destination - %s, current position - %s, content - %s", msg.order.status, msg.order.destination,
+                 msg.order.position, msg.order.content);
+            }
+
             break;
 
             // exit 
