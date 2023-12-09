@@ -5,8 +5,8 @@ user_record check_users_credentials(char* login, char* password);
 int write_order_to_file(order order);
 int write_user_to_file(char* login, char* password, user_type isWorker);
 
-// TODO: need to find username and return 1, else return 0
-// example
+// TODO: need to find username in file userdb.txt and return 1, else return 0
+// example of record about one user in file
 // usersdb.txt
 // name_of_user
 // user_password
@@ -16,7 +16,8 @@ int check_user_name(char* username);
 // TODO: get all orders for user by name from file orders.txt
 // Need to allocate memmory and return array of all orders for user
 // One user can have more than 1 order, ochevidno
-// orders.txt
+// example about one order in file
+// orders.txt 
 // aboba - username
 // 0 - type of order
 // sklad2 - dest
