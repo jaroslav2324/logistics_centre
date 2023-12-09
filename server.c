@@ -1,22 +1,17 @@
 #include "util.h"
 #include <bits/pthreadtypes.h>
-
-// some functions we may need(or not)
-
-//write new user/worker to database
-int write_user(char* username, char* password);
-// find_user ??
-// delete user ??
+#include <stdio.h>
+#include <string.h>
 
 // write order to db using order structure
 int write_order(order* order);
 // replace order with idx to new order
 int update_order(int order_idx, order* order);
 
-// delete_order ??
-// archive_order ?? (with DELIVERED status)
-
 void *user_thread(void *data);
+int write_to_file(char* login, char* password);
+user_record check_users_credentials(char* login, char* password);
+
 pthread_mutex_t mutex;
 
 int main(int argc, char* argv[]) {
@@ -74,11 +69,121 @@ int main(int argc, char* argv[]) {
         // pthread_mutex_lock(&mutex);
         // cnt_of_threads++;
         // pthread_mutex_unlock(&mutex);
+
     }
 
     return 0;
 }
 
-void *user_thread(void *data) {
+void *user_thread(void *param) {
+    int* sock2_addr = (int*) param;
+    int sock2 = *sock2_addr;
 
+    message auth_message;
+    auth_message.msg_type = MSG_AUTH;
+    send(sock2, &auth_message, sizeof(auth_message), 0);
+
+    message message;
+    recv(sock2, &message, sizeof(message), 0);
+
+    printf("Username: %s", message.username);
+    printf("Password: %s\n", message.text);
+    printf("User socket fd: %d\n", sock2);
+
+    user_record user = check_users_credentials(message.username, message.text);
+
+    if (STREQU(user.user_name, message.username)) {
+        if (STREQU(user.password, message.text)) {
+
+            strcpy(message.text, "Successfully authorization!\n");
+            printf("Successfully authorization of %s", message.username);
+            message.msg_type = MSG_TRANSFER_MSG;
+            send(sock2, &message, sizeof(message), 0);
+
+            recv(sock2, &message, sizeof(message), 0); // waiting for client socket for direct messaging
+            printf("Client addr: %s\n", inet_ntoa(message.client_socket.sin_addr));
+            printf("Client addr with func: %u\n", ntohs(message.client_socket.sin_port));
+            client_socket = message.client_socket;
+
+        } else {
+            strcpy(message.text, "Wrong password entered!\n");
+            message.username[strlen(message.username) - 1] = '\0';
+            printf("User %s entered a wrong password!\n", message.username);
+            message.msg_type = FORBIDDEN;
+            send(sock2, &message, sizeof(message), 0);
+            pthread_mutex_lock(&mutex);
+            cnt_of_threads--;
+            pthread_mutex_unlock(&mutex);
+            shutdown(sock2, SHUT_RDWR);
+            close(sock2);
+            pthread_exit(NULL);
+        }
+    } else {
+        char login_from_user[32];
+        strcpy(login_from_user, message.username);
+        char password_from_user[256];
+        strcpy(password_from_user, message.text);
+
+        strcpy(message.text, "You're not registered! Do you want to register?(Y/N)\n");
+        message.msg_type = REGISTRATION;
+        send(sock2, &message, sizeof(message), 0); 
+
+        // wating asnwer from client
+        recv(sock2, &message, sizeof(message), 0);
+        if (strcmp(message.text, "y") == 0) {
+            write_to_file(login_from_user, password_from_user);
+            printf("Success registration!\n");
+            strcpy(message.text, "Success registration!\n");
+            send(sock2, &message, sizeof(message), 0);
+
+            recv(sock2, &message, sizeof(message), 0); // waiting for client socket for direct messaging
+
+            printf("Client direct addr: %s\n", inet_ntoa(message.client_socket.sin_addr));
+            printf("Client direct port: %u\n", ntohs(message.client_socket.sin_port));
+            client_socket = message.client_socket;
+        } else {
+            printf("User doesn't want register on server!\n");
+            pthread_mutex_lock(&mutex);
+            cnt_of_threads--;
+            pthread_mutex_unlock(&mutex);
+            shutdown(sock2, SHUT_RDWR);
+            close(sock2);
+            pthread_exit(NULL);
+        }
+    }
+}
+
+// return user_record if user was found in db
+// else return user with name and password that contain '\0' chars
+user_record check_users_credentials(char* login, char* password) {
+    FILE* file;
+    file = fopen("usersdb.txt", "r");
+    char buf[MSG_BUFF_SIZE];
+    int i = 0;
+    user_record user;
+    while ((fgets(user.user_name, USERNAME_LEN, file)) != NULL) {
+        fgets(user.password, PASSWORD_LEN, file);
+        char temp[2];
+        fgets(temp, 2, file);
+        user.isWorker = temp[0] - '0';
+        if (STREQU(login, user.user_name)) {
+            if (STREQU(password, user.password)) {
+                fclose(file);
+                return user;
+            }
+        } 
+    }
+    fclose(file);
+    memset(user.user_name, '\0', sizeof(user.user_name));
+    memset(user.password, '\0', sizeof(user.password));
+
+    return user;
+}
+
+int write_to_file(char* login, char* password) {
+    FILE* file;
+    file = fopen("db.txt", "a");
+    fprintf(file, "%s%s", login, password);
+    fclose(file);
+    return 1;
 }
