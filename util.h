@@ -25,6 +25,7 @@
 #define STREQU(a,b)	(strcmp(a, b) == 0)
 
 char fileNameOrders[] = "orders.txt";
+char fileNameWarehouses[] = "warehouse.txt";
 
 typedef enum msg_types{
     MSG_AUTH, 

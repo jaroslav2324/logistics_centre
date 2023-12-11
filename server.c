@@ -38,7 +38,7 @@ int get_count_of_orders(char* username);
 // You need to count of warehouses and return this number
 int get_count_of_warehouses();
 
-//TODO: need to allocate memory for array of names of warehouses
+//WELL DONE: need to allocate memory for array of names of warehouses
 // and return this array of names, read file warehouse.txt
 // example how warehouse.txt looks like see above
 char** get_names_of_warehouses();
@@ -420,7 +420,25 @@ int get_count_of_warehouses() {
 }
 
 char** get_names_of_warehouses() {
-    return NULL;
+    FILE* fp;
+    if ((fp = fopen(fileNameWarehouses, "r")) == NULL)
+    {
+        printf("The file could not be opened\n");
+        return -1;
+    }
+    int rows = 5;
+    char** warehouse = (char**)malloc(rows * sizeof(char*));
+    for (int i = 0; i < rows; i++) {
+        warehouse[i] = (char*)malloc(64 * sizeof(char));
+    }
+    char line[64];
+    int i = 0;
+    while (fgets(line, sizeof(line), fp)) {
+        fgets(line, sizeof(line), fp);
+        strcpy(warehouse[i], line);
+        i++;
+    }
+    return warehouse;
 }
 
 char* get_warehouse_by_id(int id_of_warehouse) {
