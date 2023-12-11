@@ -23,7 +23,7 @@ int check_user_name(char* username);
 // sklad2 - dest
 // sklad - srx
 // krytaia posilka - description
-order* get_orders_for_user(char* username);
+order** get_orders_for_user(char* username);
 
 // TODO: find count of orders for user by username
 int get_count_of_orders(char* username);
@@ -184,15 +184,20 @@ void *user_thread(void *param) {
             } else if (message.msg_type == GET_ORDERS_STATUS) {
                 //TODO: get count of orders for user from logisticdb.txt and then send it to user
                 int count_of_orders = get_count_of_orders(message.username);
-                order* orders = get_orders_for_user(message.username);
+                order** orders = get_orders_for_user(message.username);
 
                 //message.text = count_of_orders
                 send(sock2, &message, sizeof(message), 0);
 
                 for (int i = 0; i < count_of_orders; ++i) {
+                    message.order = *orders[i];
                     send(sock2, &message, sizeof(message), 0);
                 }
-                //TODO: free memmory for orders
+                
+                for (int i = 0; i < count_of_orders; ++i) {
+                    free(orders[i]);
+                }
+                free(orders);
 
             } else if (message.msg_type == EXITING) {
                 message.username[strlen(message.username) - 1] = '\0';
@@ -257,7 +262,7 @@ int write_order_to_file(order order) {
     return 1;
 }
 
-order* get_orders_for_user(char* username) {
+order** get_orders_for_user(char* username) {
     return NULL;
 }
 
