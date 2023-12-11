@@ -16,7 +16,7 @@ int write_user_to_file(user_record user, int id_of_warehouse);
 // type_of_user
 int check_user_name(char* username);
 
-// TODO: get all orders for user by name from file orders.txt
+// WELL DONE: get all orders for user by name from file orders.txt
 // Need to allocate memmory and return array of all orders for user
 // One user can have more than 1 order, ochevidno
 // example about one order in file
@@ -329,7 +329,42 @@ int write_order_to_file(order order) {
 }
 
 order* get_orders_for_user(char* username) {
-    return NULL;
+    FILE* fp;
+    char line[USERNAME_LEN];
+    order_status lineStat = 1;
+    if ((fp = fopen(fileNameOrders, "r")) == NULL)
+    {
+        printf("The file could not be opened\n");
+        return -1;
+    }
+    int count_of_orders = get_count_of_orders(username);
+    order* o = (order*)malloc(sizeof(order) * count_of_orders);
+    int i = 0;
+
+    while (fgets(line, sizeof(line), fp) || i != count_of_orders) {
+        if (STREQU(line, username) == 1) {
+            strcpy(o[i].username_of_receiver, line);
+
+            fscanf(fp, "%d", &lineStat);
+            o[i].status = lineStat;
+            fgets(line, sizeof(line), fp);
+
+            fgets(line, sizeof(line), fp);
+            strcpy(o[i].destination, line);
+
+            fgets(line, sizeof(line), fp);
+            strcpy(o[i].position, line);
+
+            fgets(line, sizeof(line), fp);
+            strcpy(o[i].content, line);
+
+            /*printf("%s %d\n %s %s %s", o[i].username_of_receiver, o[i].status, o[i].destination,
+                o[i].position, o[i].content); if need to proverka */
+            i++;
+        }
+    }
+    fclose(fp);
+    return o;
 }
 
 int check_user_name(char* username) {

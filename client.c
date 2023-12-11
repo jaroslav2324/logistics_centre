@@ -2,6 +2,12 @@
 #include "util.h"
 #include <unistd.h>
 
+// set console text colour
+#define TEXT_RED printf("\033[91m");
+#define TEXT_YELLOW printf("\033[93m");
+#define TEXT_DEFAULT printf("\033[39m");
+
+
 int sockfd;
 
 int i_am_worker_flg = 0;
@@ -52,15 +58,18 @@ void user_loop(){
                 msg.msg_type = CREATE_ORDER;
                 send(sockfd, &msg, sizeof msg, 0);
 
+                system("clear");
                 // wait server to handle data
                 recv(sockfd, &msg, sizeof msg, 0);
                 if (msg.msg_type == OK){
-                    // TODO print everything good
-                    printf("Everything is ok");
+                    TEXT_YELLOW
+                    printf("Delivery created\n");
+                    TEXT_DEFAULT
                 }
                 else {
-                    // TODO print everything bad
-                    printf("Everything is bad");
+                    TEXT_RED
+                    printf("Error in delivery creating\n");
+                    TEXT_DEFAULT
                 }
             }
             break;
@@ -74,14 +83,14 @@ void user_loop(){
             // wait for response
             recv(sockfd, &msg, sizeof msg, 0);
             int amount_of_orders;
-            // ! ну две циферки не будет говорил Николай
+
             amount_of_orders = atoi(msg.text);
 
             for (int cnt = 0; cnt < amount_of_orders; cnt++){
                 recv(sockfd, &msg, sizeof msg, 0);
                 printf("Order %2i:", cnt + 1);
                 
-                printf("Status - %i, destination - %s, current position - %s, content - %s", msg.order.status, msg.order.destination,
+                printf("Status - %i\n destination - %s current position - %s content - %s", msg.order.status, msg.order.destination,
                  msg.order.position, msg.order.content);
             }
 
@@ -116,21 +125,47 @@ void worker_loop(){
 
             // display help
             case 'h':
-            printf("s - Show stock\nc - Change delivery status\ne - exit\n");
+            printf("s - Show stock(incoming and already in warehouse)\nc - Change delivery status\ne - exit\n");
             break;
 
-            // request my stock info from server
-            // TODO 
+            // request my stock info from server 
             case 's':
 
-            // send
-            //send(sockfd, &msg, sizeof(msg), 0);
+            // TODO send request to get all incoming delivery and delivery in warehouse
+            // TODO g
+            msg.msg_type = GET_ORDERS_WAREHOUSE;
+            send(sockfd, &msg, sizeof msg, 0);
+
+            recv(sockfd, &msg, sizeof msg, 0);
+            int amount_of_orders = atoi(msg.text);
+
+            for (int cnt = 0; cnt < amount_of_orders; cnt++){
+                recv(sockfd, &msg, sizeof msg, 0);
+                printf("Order %2i: ", cnt + 1);
+                // TODO show order
+                //printf(order);
+            }
             
             break;
 
             // TODO 
             case 'c':
 
+            // requese
+
+            // TODO
+            // ! TODO  
+
+            // enter index of order 
+            int idx; 
+            char entered_good_idx = 0;
+
+            while(!entered_good_idx){
+                // TODO enter order index
+                // TODO check number
+                // skip other characters 
+                while(getchar() != '\n');
+            }
             // send
             //send(sockfd, &msg, sizeof(msg), 0);
             
@@ -220,10 +255,12 @@ int main(void){
             msg.msg_type = REGISTRATION;
             strcpy(msg.username, username);
             // read type of user
+            // ! do not read when n entered
             printf("Enter your type: 1 - worker; 0 - comsumer\n");
             char strbuf[4];
             fgets(strbuf, sizeof(strbuf), stdin);
             msg.user_type = strbuf[0] - '0';
+            user_type worker_code_temp = msg.user_type;
             printf("You entered: %i\n", msg.user_type);
 
             // sending y or n
@@ -234,14 +271,39 @@ int main(void){
                 exit(EXIT_FAILURE);
             }
 
+            // if i am worker i receive all warehouses to choose on whic one i am working
+            if (worker_code_temp == WORKER){
+                i_am_worker_flg = 1;
+
+                // read amount of warehouses
+                recv(sockfd, &msg, sizeof msg, 0);
+                int amount_of_warehouses;
+
+                amount_of_warehouses = atoi(msg.text);
+
+                // read every warehouse and print
+                for (int cnt = 0; cnt < amount_of_warehouses; cnt++){
+                    recv(sockfd, &msg, sizeof msg, 0);
+                    printf("Warehouse %2i: ", cnt + 1);
+                    printf("%s", msg.text);
+                }
+                
+                // TODO choose warehouse
+                int idx;
+
+                // send idex of warehouse (from 1)
+                sprintf(msg.text, "%i\n", idx);
+                send(sockfd, &msg, sizeof(msg), 0);
+
+            }
+            else{
+                i_am_worker_flg = 0;
+            }
+
             // receive success registration message
             recv(sockfd, &msg, sizeof(msg), 0);
             printf("%s", msg.text);
-
-            if (msg.user_type == WORKER)
-                i_am_worker_flg = 1;
-            else
-                i_am_worker_flg = 0;
+                
         break;
 
         case FORBIDDEN:

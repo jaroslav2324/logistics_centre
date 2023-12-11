@@ -24,6 +24,8 @@
 #define SERVER_ADDR "192.168.29.167" //"127.0.0.1"
 #define STREQU(a,b)	(strcmp(a, b) == 0)
 
+char fileNameOrders[] = "orders.txt";
+
 typedef enum msg_types{
     MSG_AUTH, 
     REGISTRATION,
@@ -33,6 +35,7 @@ typedef enum msg_types{
     OK, // server marks message if all ok
     BAD, // server marks message if not ok
     CREATE_ORDER, // worker creates order
+    CHANGE_ORDER_STATUS, // worker changes status of order
     DELETE_ORDER, // worker deletes order???
     GET_ORDERS_STATUS, // user requests info about all orders???
     GET_ORDERS_WAREHOUSE
