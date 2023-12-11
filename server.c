@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 void *user_thread(void *data);
 user_record check_users_credentials(char* login, char* password);
@@ -162,7 +163,7 @@ void *user_thread(void *param) {
                 recv(sock2, &message, sizeof(message), 0);
                 int id_of_warehouse = atoi(message.text);
                 char* warehouse = get_warehouse_by_id(id_of_warehouse);
-                printf("Worker choose %s!\n", warehouse);
+                printf("Worker choose %s", warehouse);
                 free(warehouse);
                 write_user_to_file(user, id_of_warehouse);
                 user.index_of_warehouse = id_of_warehouse;
