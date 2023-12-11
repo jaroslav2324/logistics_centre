@@ -15,6 +15,16 @@ int get_count_of_warehouses();
 char** get_names_of_warehouses();
 char* get_warehouse_by_id(int id_of_warehouse);
 
+//TODO: need to allocate memory for orders like in get_orders_for_user()
+// and then find all orders with user_warehouse and return these
+// orders.txt
+// aboba - username_of_receiver
+// 0 - status
+// sklad2 - destination
+// sklad - user_warehouse
+// krytaia posilka - content
+order* get_orders_for_warehouse(char* user_warehouse);
+
 // replace order status to new by index
 // POKA NE NADO
 int update_order(int order_idx, order* order);
@@ -152,6 +162,7 @@ void *user_thread(void *param) {
                 printf("Worker choose %s!\n", warehouse);
                 free(warehouse);
                 write_user_to_file(user, id_of_warehouse);
+                user.index_of_warehouse = id_of_warehouse;
             } else {
                 write_user_to_file(user, 0);
             }
@@ -175,9 +186,11 @@ void *user_thread(void *param) {
             recv(sock2, &message, sizeof(message), 0);
 
             if (message.msg_type == GET_ORDERS_WAREHOUSE) {
-                
+                send(sock2, &message, sizeof(message), 0);
+                char* user_warehouse = get_warehouse_by_id(user.index_of_warehouse);
+                order* orders = get_orders_for_warehouse(user_warehouse);
 
-            } else if (message.msg_type == GET_ORDERS_STATUS) {
+            } else if (message.msg_type == CHANGE_ORDER_STATUS) {
                 
 
             } else if (message.msg_type == EXITING) {
@@ -432,5 +445,9 @@ char* get_warehouse_by_id(int id_of_warehouse) {
             return str_to_return;
         } 
     }
+    return NULL;
+}
+
+order* get_orders_for_warehouse(char* user_warehouse) {
     return NULL;
 }
