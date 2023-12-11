@@ -67,7 +67,8 @@ void msg_send(msg_types type){
 
 // read message from sockfd to msg buffer. more convenient than recv() with four parameters
 void msg_recv(){
-    recv(sockfd, &msg, sizeof msg, 0);
+    if(recv(sockfd, &msg, sizeof msg, 0) < 0) 
+        printf_red("ERROR");
 }
 
 
@@ -366,7 +367,8 @@ int main(void){
                 printf("Enter index of warehouse:\n");
                 // read every warehouse and print
                 for (int cnt = 0; cnt < amount_of_warehouses; cnt++){
-                    msg_recv();
+                    //msg_recv();
+                    recv(sockfd, &msg, sizeof msg, MSG_WAITALL);
                     printf("Warehouse %2i: %s", cnt + 1, msg.text);
                 }
                 printf("\n");
