@@ -24,6 +24,31 @@ void printf_red(const char * str){
 }
 
 
+void print_order(order* order){
+    printf("Status - %i\n destination - %s current position - %s content - %s\n", order->status, order->destination,
+                 order->position, order->content);
+}
+
+// return positive(>0) int: lower_bound <= num <= upper_bound
+int read_positive_num(FILE* __restrict__ stream, int lower_bound, int upper_bound){
+
+    int num = 0;
+    char buff[32];
+    char good_num_flg = 0;
+    while (!good_num_flg) {
+        fgets(buff, sizeof buff, stdin);
+        num = atoi(buff);
+        if(num <= 0 || num < lower_bound || num > upper_bound){
+            printf_yellow("Index out of bounds. Enter once again.\n");
+        }
+        else{
+            good_num_flg = 1;
+        }
+    }
+    return num;
+}
+
+
 
 int sockfd;
 
@@ -46,8 +71,10 @@ void msg_recv(){
 }
 
 
-void f_obr_user_thread(int sig) {
-    printf("SIGPIPE in user thread!\n");
+// handler ctrl+c -> send EXITING to server
+void sigint_handler(int sig){
+    printf("Ctrl+C\n");
+    msg_send(EXITING);
     close(sockfd);
     exit(EXIT_SUCCESS); 
 }
@@ -126,8 +153,7 @@ void user_loop(){
                 char strbuf[30];
                 sprintf(strbuf, "Order %2i:\n", cnt + 1);
                 printf_yellow(strbuf);
-                printf("Status - %i\n destination - %s current position - %s content - %s\n", msg.order.status, msg.order.destination,
-                 msg.order.position, msg.order.content);
+                print_order(&msg.order);
             }
 
             break;
@@ -159,58 +185,68 @@ void worker_loop(){
 
             // display help
             case 'h':
-            printf("s - Show stock(incoming and already in warehouse)\nc - Change delivery status\ne - exit\n");
+            printf("s - Show delivery(incoming and already in warehouse)\nc - Change delivery status\ne - exit\n");
             break;
 
             // request my stock info from server 
             case 's':
+            {
+                // send request to get all delivery in warehouse and incoming delivery 
+                msg_send(GET_ORDERS_WAREHOUSE);
 
-            // send request to get all delivery in warehouse and incoming delivery 
-            msg_send(GET_ORDERS_WAREHOUSE);
-
-            // receive amount of orders
-            msg_recv();
-            int amount_of_orders = atoi(msg.text);
-            if (amount_of_orders == 0){
-                printf_yellow("Amount of orders 0\n");
-                break;
-            }
-
-            // receive orders
-            for (int cnt = 0; cnt < amount_of_orders; cnt++){
+                // receive amount of orders
                 msg_recv();
+                int amount_of_orders = atoi(msg.text);
+                if (amount_of_orders == 0){
+                    printf_yellow("Amount of orders 0\n");
+                    break;
+                }
 
-                // show order
-                char strbuf[30];
-                sprintf(strbuf, "Order %2i:\n", cnt + 1);
-                printf_yellow(strbuf);
-                printf("Status - %i\n destination - %s current position - %s content - %s\n", msg.order.status, msg.order.destination,
-                 msg.order.position, msg.order.content);
+                // receive orders
+                for (int cnt = 0; cnt < amount_of_orders; cnt++){
+                    msg_recv();
+
+                    // show order
+                    char strbuf[30];
+                    sprintf(strbuf, "Order %2i:\n", cnt + 1);
+                    printf_yellow(strbuf);
+                    print_order(&msg.order);
+                }
             }
-            
             break;
 
-            // TODO 
             case 'c':
+            {
+                // request all orders
+                // send request to get all delivery in warehouse and incoming delivery 
+                msg_send(CHANGE_ORDER_STATUS);
 
-            // requese
+                // receive amount of orders
+                msg_recv();
+                int amount_of_orders = atoi(msg.text);
+                if (amount_of_orders == 0){
+                    printf_yellow("Amount of orders 0\n");
+                    break;
+                }
 
-            // TODO
-            // ! TODO  
+                // receive orders
+                for (int cnt = 0; cnt < amount_of_orders; cnt++){
+                    msg_recv();
 
-            // enter index of order 
-            int idx; 
-            char entered_good_idx = 0;
+                    // show order
+                    char strbuf[30];
+                    sprintf(strbuf, "Order %2i:\n", cnt + 1);
+                    printf_yellow(strbuf);
+                    print_order(&msg.order);
+                }
 
-            while(!entered_good_idx){
-                // TODO enter order index
-                // TODO check number
-                // skip other characters 
-                while(getchar() != '\n');
+                // enter index of order 
+                int idx = read_positive_num(stdin, 0, amount_of_orders); 
+
+                // send index in text
+                sprintf(msg.text, "%i", idx);
+                msg_send(CHANGE_ORDER_STATUS);
             }
-            // send
-            //send(sockfd, &msg, sizeof(msg), 0);
-            
             break;
 
             // exit 
@@ -227,6 +263,8 @@ void worker_loop(){
 
 int main(void){
 
+    signal(SIGINT, sigint_handler);
+
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0){
         printf("Error in socket opening\n");
@@ -239,7 +277,7 @@ int main(void){
     serv_addr.sin_port = htons(SERVER_PORT);
 
     if (connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
-        printf("Error when coonection!\n");
+        printf("Error with connection!\n");
         return -1;
     } else {
         printf("Connection done!\n");
@@ -329,25 +367,13 @@ int main(void){
                 // read every warehouse and print
                 for (int cnt = 0; cnt < amount_of_warehouses; cnt++){
                     msg_recv();
-                    printf("Warehouse %2i: ", cnt + 1);
-                    printf("%s", msg.text);
+                    printf("Warehouse %2i: %s", cnt + 1, msg.text);
                 }
+                printf("\n");
                 
-                printf("Enter index: ");
-                int idx;
 
-                // read index 
-                char good_idx_flg = 0;
-                while (!good_idx_flg) {
-                    fgets(msg.text, sizeof msg.text, stdin);
-                    idx = atoi(msg.text);
-                    if(idx == 0){
-                        printf_yellow("Wrong input. Try once again.\n");
-                    }
-                    else{
-                        good_idx_flg = 1;
-                    }
-                }
+                printf("Enter index: ");
+                int idx = read_positive_num(stdin, 0, amount_of_warehouses);
                 
                 // send index of warehouse (indexation from 1)
                 sprintf(msg.text, "%i\n", idx);
