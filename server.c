@@ -335,17 +335,20 @@ order* get_orders_for_user(char* username) {
     if ((fp = fopen(fileNameOrders, "r")) == NULL)
     {
         printf("The file could not be opened\n");
-        return -1;
+        return NULL;
+        //return -1;
     }
     int count_of_orders = get_count_of_orders(username);
     order* o = (order*)malloc(sizeof(order) * count_of_orders);
     int i = 0;
 
+    //yarik mark: сомнительно, ноо ооокей
     while (fgets(line, sizeof(line), fp) || i != count_of_orders) {
         if (STREQU(line, username) == 1) {
             strcpy(o[i].username_of_receiver, line);
 
-            fscanf(fp, "%d", &lineStat);
+            //fscanf(fp, "%d", &lineStat);
+            fscanf(fp, "%d", (int*)&lineStat);
             o[i].status = lineStat;
             fgets(line, sizeof(line), fp);
 
@@ -385,7 +388,7 @@ int get_count_of_orders(char* username) {
     // COMMENT THIS IF YOU WANT TO USE check_user_name OUT OF THIS FUNCTION
     if(!check_user_name(username))
     {
-        printf("There\'s no user with username %s", username);
+        printf("There\'s no user with username %s\n", username);
         return -1;
     }
 

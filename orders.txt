@@ -33,3 +33,8 @@ privet
 sdfgh
 sdfgh
 serfg
+privet
+0
+sklad1
+sklad2
+skimitar

@@ -2,10 +2,27 @@
 #include "util.h"
 #include <unistd.h>
 
+// clear screen
+#define CLR_SCRN system("clear");
+
 // set console text colour
-#define TEXT_RED printf("\033[91m");
-#define TEXT_YELLOW printf("\033[93m");
-#define TEXT_DEFAULT printf("\033[39m");
+#define SET_TEXT_RED     printf("\033[91m");
+#define SET_TEXT_YELLOW  printf("\033[93m");
+#define SET_TEXT_DEFAULT printf("\033[39m");
+
+// not for formatting output, only for text
+void printf_yellow(const char * str){
+    SET_TEXT_YELLOW
+    printf("%s", str);
+    SET_TEXT_DEFAULT
+}
+// not for formatting output, only for text
+void printf_red(const char * str){
+    SET_TEXT_RED
+    printf("%s", str);
+    SET_TEXT_DEFAULT
+}
+
 
 
 int sockfd;
@@ -58,39 +75,43 @@ void user_loop(){
                 msg.msg_type = CREATE_ORDER;
                 send(sockfd, &msg, sizeof msg, 0);
 
-                system("clear");
+                CLR_SCRN
+
                 // wait server to handle data
                 recv(sockfd, &msg, sizeof msg, 0);
                 if (msg.msg_type == OK){
-                    TEXT_YELLOW
-                    printf("Delivery created\n");
-                    TEXT_DEFAULT
+                    printf_yellow("Delivery created\n");
                 }
                 else {
-                    TEXT_RED
-                    printf("Error in delivery creating\n");
-                    TEXT_DEFAULT
+                    printf_yellow("Error in delivery creation\n");
                 }
             }
             break;
 
             //request my delivery from server
             case 'o':
-            
+
+            strcpy(msg.username, username);
             msg.msg_type = GET_ORDERS_STATUS;
             send(sockfd, &msg, sizeof msg, 0);
 
             // wait for response
             recv(sockfd, &msg, sizeof msg, 0);
-            int amount_of_orders;
+            int amount_of_orders = atoi(msg.text);
+            if (amount_of_orders == 0){
+                printf_yellow("Amount of orders 0\n");
+                break;
+            }
 
-            amount_of_orders = atoi(msg.text);
+            CLR_SCRN
 
             for (int cnt = 0; cnt < amount_of_orders; cnt++){
                 recv(sockfd, &msg, sizeof msg, 0);
-                printf("Order %2i:", cnt + 1);
-                
-                printf("Status - %i\n destination - %s current position - %s content - %s", msg.order.status, msg.order.destination,
+
+                char strbuf[30];
+                sprintf(strbuf, "Order %2i:\n", cnt + 1);
+                printf_yellow(strbuf);
+                printf("Status - %i\n destination - %s current position - %s content - %s\n", msg.order.status, msg.order.destination,
                  msg.order.position, msg.order.content);
             }
 
@@ -133,6 +154,7 @@ void worker_loop(){
 
             // TODO send request to get all incoming delivery and delivery in warehouse
             // TODO g
+            strcpy(msg.username, username);
             msg.msg_type = GET_ORDERS_WAREHOUSE;
             send(sockfd, &msg, sizeof msg, 0);
 
