@@ -427,7 +427,7 @@ char** get_names_of_warehouses() {
         printf("The file could not be opened\n");
         return -1;
     }
-    int rows = 5;
+    int rows = get_count_of_warehouses();
     char** warehouse = (char**)malloc(rows * sizeof(char*));
     for (int i = 0; i < rows; i++) {
         warehouse[i] = (char*)malloc(64 * sizeof(char));
