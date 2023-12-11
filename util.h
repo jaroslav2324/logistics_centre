@@ -20,7 +20,7 @@
 //#define USER_NUMBER 3
 
 #define SERVER_PORT 48124
-#define SERVER_ADDR "192.168.202.48"//"127.0.0.1"
+#define SERVER_ADDR "192.168.29.167"//"127.0.0.1"
 #define STREQU(a,b)	(strcmp(a, b) == 0)
 
 typedef enum msg_types{
@@ -77,6 +77,6 @@ typedef struct user_record {
 typedef struct warehouse_record {
     int id;
     char position[USERNAME_LEN];
-    
+
 } warehouse_record;
 
