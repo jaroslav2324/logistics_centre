@@ -251,7 +251,7 @@ int main(void){
         // enter username and password
         printf("Enter username or login: ");
         fgets(username, USERNAME_LEN, stdin);
-        printf("You entered: %s\n", msg.username);
+        printf("You entered: %s\n", username);
         printf("Enter password: ");
         fgets(msg.text, PASSWORD_LEN, stdin);
         printf("You entered: %s\n", msg.text);
@@ -325,6 +325,7 @@ int main(void){
                     printf_red("NO WAREHOUSES RECEIVED\n");
                 }
 
+                printf("Enter index of warehouse:\n");
                 // read every warehouse and print
                 for (int cnt = 0; cnt < amount_of_warehouses; cnt++){
                     msg_recv();
@@ -332,15 +333,25 @@ int main(void){
                     printf("%s", msg.text);
                 }
                 
-                // TODO choose warehouse
+                printf("Enter index: ");
                 int idx;
 
+                // read index 
+                char good_idx_flg = 0;
+                while (!good_idx_flg) {
+                    fgets(msg.text, sizeof msg.text, stdin);
+                    idx = atoi(msg.text);
+                    if(idx == 0){
+                        printf_yellow("Wrong input. Try once again.\n");
+                    }
+                    else{
+                        good_idx_flg = 1;
+                    }
+                }
                 
-
-                // send index of warehouse (from 1)
+                // send index of warehouse (indexation from 1)
                 sprintf(msg.text, "%i\n", idx);
                 msg_send(REGISTRATION);
-
             }
             else{
                 i_am_worker_flg = 0;
