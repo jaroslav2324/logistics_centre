@@ -1,6 +1,7 @@
 #include "util.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 
 void *user_thread(void *data);
@@ -10,10 +11,22 @@ int write_user_to_file(user_record user, int id_of_warehouse);
 
 int check_user_name(char* username);
 order* get_orders_for_user(char* username);
-int get_count_of_orders(char* username);
+int get_count_of_orders_by_username(char* username);
 int get_count_of_warehouses();
 char** get_names_of_warehouses();
 char* get_warehouse_by_id(int id_of_warehouse);
+
+int get_count_of_orders_by_warehouse(char* warehouse);
+
+//TODO: need to allocate memory for orders like in get_orders_for_user()
+// and then find all orders with user_warehouse and return these
+// orders.txt
+// aboba - username_of_receiver
+// 0 - status
+// sklad2 - destination
+// sklad - user_warehouse
+// krytaia posilka - content
+order* get_orders_for_warehouse(char* user_warehouse);
 
 // replace order status to new by index
 // POKA NE NADO
@@ -152,6 +165,7 @@ void *user_thread(void *param) {
                 printf("Worker choose %s!\n", warehouse);
                 free(warehouse);
                 write_user_to_file(user, id_of_warehouse);
+                user.index_of_warehouse = id_of_warehouse;
             } else {
                 write_user_to_file(user, 0);
             }
@@ -171,13 +185,27 @@ void *user_thread(void *param) {
 
     if (user.type == WORKER) {
         while (1) {
-            
             recv(sock2, &message, sizeof(message), 0);
 
             if (message.msg_type == GET_ORDERS_WAREHOUSE) {
-                
+                char* user_warehouse = get_warehouse_by_id(user.index_of_warehouse);
+                printf("User warehouse: %s", user_warehouse);
+                int count_of_orders_in_warehouse = get_count_of_orders_by_warehouse(user_warehouse);
+                printf("User count of orders: %d\n", count_of_orders_in_warehouse);
+                sprintf(message.text, "%d\n", count_of_orders_in_warehouse);
+                send(sock2, &message, sizeof(message), 0);
 
-            } else if (message.msg_type == GET_ORDERS_STATUS) {
+                order* orders = get_orders_for_warehouse(user_warehouse);
+                for (int i = 0; i < count_of_orders_in_warehouse; ++i) {
+                    message.order = orders[i];
+                    send(sock2, &message, sizeof(message), 0);
+                }
+
+                free(user_warehouse);
+                free(orders);
+                printf("Server send orders from warehouse!\n");
+        
+            } else if (message.msg_type == CHANGE_ORDER_STATUS) {
                 
 
             } else if (message.msg_type == EXITING) {
@@ -214,7 +242,7 @@ void *user_thread(void *param) {
                 }
 
             } else if (message.msg_type == GET_ORDERS_STATUS) {
-                int count_of_orders = get_count_of_orders(message.username);
+                int count_of_orders = get_count_of_orders_by_username(message.username);
                 order* orders = get_orders_for_user(message.username);
 
                 sprintf(message.text, "%d\n", count_of_orders);
@@ -253,7 +281,7 @@ user_record check_users_credentials(char* login, char* password) {
         // char temp[3];
         // fgets(temp, 3, file); // fgets read until n-1 chars, need read 2 chars: user.type and \n
         // user.type = temp[0] - '0';
-        fscanf(file, "%d", &user.type);
+        fscanf(file, "%d", (int*)&user.type);
         if (user.type == WORKER) {
             fscanf(file, "%d", &user.index_of_warehouse);
         } else if (user.type == CONSUMER) {
@@ -309,13 +337,13 @@ order* get_orders_for_user(char* username) {
         return NULL;
         //return -1;
     }
-    int count_of_orders = get_count_of_orders(username);
+    int count_of_orders = get_count_of_orders_by_username(username);
     order* o = (order*)malloc(sizeof(order) * count_of_orders);
     int i = 0;
 
     //yarik mark: сомнительно, ноо ооокей
     while (fgets(line, sizeof(line), fp) || i != count_of_orders) {
-        if (STREQU(line, username) == 1) {
+        if (STREQU(line, username)) {
             strcpy(o[i].username_of_receiver, line);
 
             //fscanf(fp, "%d", &lineStat);
@@ -355,7 +383,7 @@ int check_user_name(char* username) {
     return 0;
 }
 
-int get_count_of_orders(char* username) {
+int get_count_of_orders_by_username(char* username) {
     // COMMENT THIS IF YOU WANT TO USE check_user_name OUT OF THIS FUNCTION
     if(!check_user_name(username))
     {
@@ -433,4 +461,63 @@ char* get_warehouse_by_id(int id_of_warehouse) {
         } 
     }
     return NULL;
+}
+
+int get_count_of_orders_by_warehouse(char* warehouse) {
+    FILE* file;
+    file = fopen("orders.txt", "r");
+    char str[USERNAME_LEN];
+    int i = 1;
+    int cnt = 0;
+    // printf("Input in func: %s with len %ld\n", warehouse, strlen(warehouse));
+    while (fgets(str, USERNAME_LEN, file) != NULL)
+    {
+        if (STREQU(str, warehouse) && (i % 4 == 0)) {
+            cnt++;
+        }
+        ++i;
+        if (i == 5) {
+            i = 0;
+        }
+    }
+    return cnt;
+}
+
+order* get_orders_for_warehouse(char* user_warehouse) {
+    FILE* fp;
+    char line[4][64];
+    order_status status;
+    if ((fp = fopen(fileNameOrders, "r")) == NULL)
+    {
+        printf("The file could not be opened\n");
+        return NULL;
+    }
+    int count_of_orders = get_count_of_orders_by_warehouse(user_warehouse);
+    order* o = (order*)malloc(sizeof(order) * count_of_orders);
+    int i = 0;
+    printf("Warehouse like param: %s", user_warehouse);
+            //name
+    while (fgets(line[0], 64, fp) != NULL) {
+        //status
+        fscanf(fp, "%d", (int*)&status);
+        fgetc(fp);
+        //dest
+        fgets(line[1], 64, fp);
+        //postion
+        fgets(line[2], 64, fp);
+        //content
+        fgets(line[3], 64, fp);
+
+        if (STREQU(line[2], user_warehouse)) { 
+            strcpy(o[i].username_of_receiver, line[0]);
+            o[i].status =  status;
+            strcpy(o[i].destination, line[1]);
+            strcpy(o[i].position, line[2]);
+            strcpy(o[i].content, line[3]);
+            i++;
+        }         
+    }
+
+    fclose(fp);
+    return o;
 }
