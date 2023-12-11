@@ -15,6 +15,7 @@
 #define PASSWORD_LEN 32
 #define ADDRESS_LEN 128
 #define CONTENT_SIZE 128
+#define WAREHOUSE_LEN 32
 
 #define MSG_BUFF_SIZE 256
 //#define USER_NUMBER 3

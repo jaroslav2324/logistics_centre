@@ -369,7 +369,16 @@ int get_count_of_orders(char* username) {
 }
 
 int get_count_of_warehouses() {
-    return 1;
+    // Because warehouse.txt has one line for id and one line for name, to get count of warehouses I just divide number of lines by 2
+    FILE* file;
+    file = fopen("warehouse.txt", "r");
+    char str[WAREHOUSE_LEN];
+    int i = 0;
+    while (fgets(str, WAREHOUSE_LEN, file))
+    {
+        i++;
+    }
+    return i/2;
 }
 
 char** get_names_of_warehouses() {
@@ -377,5 +386,24 @@ char** get_names_of_warehouses() {
 }
 
 char* get_warehouse_by_id(int id_of_warehouse) {
+    // RESULT STRING HAS TO BE FREED AFTER USE!!!
+    FILE* file;
+    file = fopen("warehouse.txt", "r");
+    // Convert int id to char* id to use STREQU
+    char id[4];
+    sprintf(id, "%d\n", id_of_warehouse);
+
+    char str[WAREHOUSE_LEN];
+    int i = 0;
+    while (fgets(str, WAREHOUSE_LEN, file))
+    {
+        if (STREQU(str, id) && (i % 2 == 0))
+        {
+            fgets(str, WAREHOUSE_LEN, file);
+            char *str_to_return = malloc(strlen(str)*sizeof(char));
+            strcpy(str_to_return, str);
+            return str_to_return;
+        } 
+    }
     return NULL;
 }
