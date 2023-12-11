@@ -333,11 +333,39 @@ order* get_orders_for_user(char* username) {
 }
 
 int check_user_name(char* username) {
-    return 1;
+    FILE* file;
+    file = fopen("usersdb.txt", "r");
+    char str[USERNAME_LEN];
+    int i = 0;
+    while (fgets(str, USERNAME_LEN, file))
+    {
+        if (STREQU(str, username) && (i % 3 == 0))
+            return 1;
+        i++;
+    }
+    return 0;
 }
 
 int get_count_of_orders(char* username) {
-    return 1;
+    // COMMENT THIS IF YOU WANT TO USE check_user_name OUT OF THIS FUNCTION
+    if(!check_user_name(username))
+    {
+        printf("There\'s no user with username %s", username);
+        return -1;
+    }
+
+    FILE* file;
+    file = fopen("orders.txt", "r");
+    char str[USERNAME_LEN];
+    int i = 0;
+    int cnt = 0;
+    while (fgets(str, USERNAME_LEN, file))
+    {
+        if (STREQU(str, username) && (i % 5 == 0))
+            cnt++;
+        i++;
+    }
+    return cnt;
 }
 
 int get_count_of_warehouses() {
