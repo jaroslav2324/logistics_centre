@@ -33,6 +33,18 @@ char username[USERNAME_LEN];
 message msg; // buffer
 
 
+// copy username and type to msg buffer, send to sockfd
+void msg_send(msg_types type){
+    strcpy(msg.username, username);
+    msg.msg_type = type;
+    send(sockfd, &msg, sizeof msg, 0);
+}
+
+// read message from sockfd to msg buffer. more convenient than recv() with four parameters
+void msg_recv(){
+    recv(sockfd, &msg, sizeof msg, 0);
+}
+
 
 void f_obr_user_thread(int sig) {
     printf("SIGPIPE in user thread!\n");
@@ -55,12 +67,16 @@ void user_loop(){
 
             // display help
             case 'h':
-            printf("n - Create new delivery\no - Check my delivery\ne - exit\n");
+            {
+                CLR_SCRN
+                printf("n - Create new delivery\no - Check my delivery\ne - exit\n");
+            }
             break;
 
             case 'n':
             {   
-                strcpy(msg.username, username);
+                CLR_SCRN
+                // fill message buffer
                 // enter username of receiver
                 printf("Enter username of receiver:\n");
                 fgets(msg.order.username_of_receiver, USERNAME_LEN, stdin);
@@ -71,9 +87,9 @@ void user_loop(){
                 fgets(msg.order.position, 64, stdin);
                 printf("Enter delivery content:\n");
                 fgets(msg.order.content, 64, stdin);
+
                 // send
-                msg.msg_type = CREATE_ORDER;
-                send(sockfd, &msg, sizeof msg, 0);
+                msg_send(CREATE_ORDER);
 
                 CLR_SCRN
 
@@ -83,7 +99,7 @@ void user_loop(){
                     printf_yellow("Delivery created\n");
                 }
                 else {
-                    printf_yellow("Error in delivery creation\n");
+                    printf_yellow("Error in delivery creation(wrong receiver name?)\n");
                 }
             }
             break;
@@ -91,12 +107,11 @@ void user_loop(){
             //request my delivery from server
             case 'o':
 
-            strcpy(msg.username, username);
-            msg.msg_type = GET_ORDERS_STATUS;
-            send(sockfd, &msg, sizeof msg, 0);
+            msg_send(GET_ORDERS_STATUS);
 
             // wait for response
-            recv(sockfd, &msg, sizeof msg, 0);
+            msg_recv();
+
             int amount_of_orders = atoi(msg.text);
             if (amount_of_orders == 0){
                 printf_yellow("Amount of orders 0\n");
@@ -106,7 +121,7 @@ void user_loop(){
             CLR_SCRN
 
             for (int cnt = 0; cnt < amount_of_orders; cnt++){
-                recv(sockfd, &msg, sizeof msg, 0);
+                msg_recv();
 
                 char strbuf[30];
                 sprintf(strbuf, "Order %2i:\n", cnt + 1);
@@ -119,9 +134,7 @@ void user_loop(){
 
             // exit 
             case 'e':
-            msg.msg_type = EXITING;
-            strcpy(msg.username, username);
-            send(sockfd, &msg, sizeof(msg), 0);
+            msg_send(EXITING);
             exitflag = 1;
             close(sockfd);
             break;
@@ -141,7 +154,7 @@ void worker_loop(){
         char option = getchar();
         // skip other characters 
         while(getchar() != '\n');
-        //printf("char: %c\n", option);
+
         switch(option){
 
             // display help
@@ -152,20 +165,27 @@ void worker_loop(){
             // request my stock info from server 
             case 's':
 
-            // TODO send request to get all incoming delivery and delivery in warehouse
-            // TODO g
-            strcpy(msg.username, username);
-            msg.msg_type = GET_ORDERS_WAREHOUSE;
-            send(sockfd, &msg, sizeof msg, 0);
+            // send request to get all delivery in warehouse and incoming delivery 
+            msg_send(GET_ORDERS_WAREHOUSE);
 
-            recv(sockfd, &msg, sizeof msg, 0);
+            // receive amount of orders
+            msg_recv();
             int amount_of_orders = atoi(msg.text);
+            if (amount_of_orders == 0){
+                printf_yellow("Amount of orders 0\n");
+                break;
+            }
 
+            // receive orders
             for (int cnt = 0; cnt < amount_of_orders; cnt++){
-                recv(sockfd, &msg, sizeof msg, 0);
-                printf("Order %2i: ", cnt + 1);
-                // TODO show order
-                //printf(order);
+                msg_recv();
+
+                // show order
+                char strbuf[30];
+                sprintf(strbuf, "Order %2i:\n", cnt + 1);
+                printf_yellow(strbuf);
+                printf("Status - %i\n destination - %s current position - %s content - %s\n", msg.order.status, msg.order.destination,
+                 msg.order.position, msg.order.content);
             }
             
             break;
@@ -195,9 +215,7 @@ void worker_loop(){
 
             // exit 
             case 'e':
-            msg.msg_type = EXITING;
-            strcpy(msg.username, username);
-            send(sockfd, &msg, sizeof(msg), 0);
+            msg_send(EXITING);
             exitflag = 1;
             break;
 
@@ -228,25 +246,24 @@ int main(void){
     }
 
     // authorize
-    recv(sockfd, &msg, sizeof(msg), 0);
+    msg_recv();
     if (msg.msg_type == MSG_AUTH) {
         // enter username and password
         printf("Enter username or login: ");
-        fgets(msg.username, USERNAME_LEN, stdin);
-        strcpy(username, msg.username);
+        fgets(username, USERNAME_LEN, stdin);
         printf("You entered: %s\n", msg.username);
         printf("Enter password: ");
         fgets(msg.text, PASSWORD_LEN, stdin);
         printf("You entered: %s\n", msg.text);
-        msg.msg_type = MSG_AUTH;
-        send(sockfd, &msg, sizeof(msg), 0);
+
+        msg_send(MSG_AUTH);
     } else {
         printf("Error!\n");
         exit(EXIT_FAILURE);
     }
 
-
-    recv(sockfd, &msg, sizeof(msg), 0);
+    // wait for server responce
+    msg_recv();
 
     switch (msg.msg_type)
     {
@@ -274,13 +291,12 @@ int main(void){
                     printf("Error. Enter once again[y/n]\n");
                 }
             }
-            msg.msg_type = REGISTRATION;
-            strcpy(msg.username, username);
 
             if (ynchar == 'n'){
-                // sending n
-                send(sockfd, &msg, sizeof(msg), 0);
+                // sending n and exitind
+                msg_send(REGISTRATION);
                 close(sockfd);
+                CLR_SCRN
                 exit(EXIT_SUCCESS);
             }
 
@@ -293,21 +309,25 @@ int main(void){
             printf("You entered: %i\n", msg.user_type);
 
             // sending y
-            send(sockfd, &msg, sizeof(msg), 0);
+            msg_send(REGISTRATION);
 
             // if i am worker i receive all warehouses to choose on which one i am working
             if (worker_code_temp == WORKER){
                 i_am_worker_flg = 1;
 
                 // read amount of warehouses
-                recv(sockfd, &msg, sizeof msg, 0);
+                msg_recv();
                 int amount_of_warehouses;
 
                 amount_of_warehouses = atoi(msg.text);
 
+                if (amount_of_warehouses <= 0){
+                    printf_red("NO WAREHOUSES RECEIVED\n");
+                }
+
                 // read every warehouse and print
                 for (int cnt = 0; cnt < amount_of_warehouses; cnt++){
-                    recv(sockfd, &msg, sizeof msg, 0);
+                    msg_recv();
                     printf("Warehouse %2i: ", cnt + 1);
                     printf("%s", msg.text);
                 }
@@ -315,9 +335,11 @@ int main(void){
                 // TODO choose warehouse
                 int idx;
 
-                // send idex of warehouse (from 1)
+                
+
+                // send index of warehouse (from 1)
                 sprintf(msg.text, "%i\n", idx);
-                send(sockfd, &msg, sizeof(msg), 0);
+                msg_send(REGISTRATION);
 
             }
             else{

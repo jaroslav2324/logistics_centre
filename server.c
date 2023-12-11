@@ -225,6 +225,7 @@ void *user_thread(void *param) {
             recv(sock2, &message, sizeof(message), 0);
 
             if (message.msg_type == CREATE_ORDER) {
+                //TODO: from yarik: do not let user to create order for himself
                 int code = check_user_name(message.order.username_of_receiver);
                 if (code) {
                     message.order.status = CREATED;
