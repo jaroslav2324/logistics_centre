@@ -1,4 +1,5 @@
 #include "util.h"
+#include <stdio.h>
 #include <stdlib.h>
 
 void *user_thread(void *data);
@@ -166,39 +167,32 @@ void *user_thread(void *param) {
             recv(sock2, &message, sizeof(message), 0);
 
             if (message.msg_type == CREATE_ORDER) {
-                printf("Username of receiver: %s", message.order.username_of_receiver);
-                printf("Destination: %s", message.order.destination);
-                printf("Position: %s", message.order.position);
-                printf("Content about item: %s\n", message.order.content);
-                message.order.status = CREATED;
-                
                 int code = check_user_name(message.order.username_of_receiver);
                 if (code) {
+                    message.order.status = CREATED;
                     code = write_order_to_file(message.order);
+
+                    message.username[strlen(message.username) - 1] = '\0';
+                    printf("User %s create order!\n", message.username);
+                    printf("Username of receiver: %s", message.order.username_of_receiver);
+                    printf("Destination: %s", message.order.destination);
+                    printf("Position: %s", message.order.position);
+                    printf("Content about item: %s\n", message.order.content);
+
                     message.msg_type = OK;
                     send(sock2, &message, sizeof(message), 0);
                 } else {
                     message.msg_type = BAD;
                     send(sock2, &message, sizeof(message), 0);
+                    printf("User entered wr0ng name of receiver!\n");
                 }
 
             } else if (message.msg_type == GET_ORDERS_STATUS) {
                 //TODO: get count of orders for user from logisticdb.txt and then send it to user
-                int count_of_orders = 2;//get_count_of_orders(message.username);
+                int count_of_orders = get_count_of_orders(message.username);
                 order* orders = get_orders_for_user(message.username);
                 orders = (order*)malloc(sizeof(order) * count_of_orders);
-                strcpy(orders[0].username_of_receiver, "petya");
-                strcpy(orders[0].content, "jopa");
-                strcpy(orders[0].destination, "sklad");
-                strcpy(orders[0].position, "sklad2");
-                orders[0].status = CREATED;
 
-                strcpy(orders[1].username_of_receiver, "kolya");
-                strcpy(orders[1].content, "xui");
-                strcpy(orders[1].destination, "sklad3");
-                strcpy(orders[1].position, "sklad4");
-                orders[1].status = CREATED;
-                
                 sprintf(message.text, "%d\n", count_of_orders);
                 send(sock2, &message, sizeof(message), 0);
 
