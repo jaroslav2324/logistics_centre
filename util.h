@@ -20,7 +20,7 @@
 //#define USER_NUMBER 3
 
 #define SERVER_PORT 48124
-#define SERVER_ADDR "127.0.0.1"//"192.168.29.167" 
+#define SERVER_ADDR "192.168.29.167" //"127.0.0.1"
 #define STREQU(a,b)	(strcmp(a, b) == 0)
 
 typedef enum msg_types{
@@ -32,9 +32,10 @@ typedef enum msg_types{
     OK, // server marks message if all ok
     BAD, // server marks message if not ok
     CREATE_ORDER, // worker creates order
-    UPDATE_ORDER, // worker updates order
+    CHANGE_ORDER_STATUS, // worker changes status of order
     DELETE_ORDER, // worker deletes order???
-    GET_ORDERS_STATUS // user requests info about all orders???
+    GET_ORDERS_STATUS, // user requests info about all orders???
+    GET_ORDERS_WAREHOUSE
 } msg_types;
 
 typedef enum user_type {
