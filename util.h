@@ -23,6 +23,8 @@
 #define SERVER_ADDR "192.168.29.167" //"127.0.0.1"
 #define STREQU(a,b)	(strcmp(a, b) == 0)
 
+char fileNameOrders[] = "orders.txt";
+
 typedef enum msg_types{
     MSG_AUTH, 
     REGISTRATION,
