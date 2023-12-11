@@ -32,9 +32,9 @@ typedef enum msg_types{
     OK, // server marks message if all ok
     BAD, // server marks message if not ok
     CREATE_ORDER, // worker creates order
-    UPDATE_ORDER, // worker updates order
     DELETE_ORDER, // worker deletes order???
-    GET_ORDERS_STATUS // user requests info about all orders???
+    GET_ORDERS_STATUS, // user requests info about all orders???
+    GET_ORDERS_WAREHOUSE
 } msg_types;
 
 typedef enum user_type {
