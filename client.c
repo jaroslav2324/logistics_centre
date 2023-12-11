@@ -276,8 +276,15 @@ int main(void){
             }
             msg.msg_type = REGISTRATION;
             strcpy(msg.username, username);
+
+            if (ynchar == 'n'){
+                // sending n
+                send(sockfd, &msg, sizeof(msg), 0);
+                close(sockfd);
+                exit(EXIT_SUCCESS);
+            }
+
             // read type of user
-            // ! do not read when n entered
             printf("Enter your type: 1 - worker; 0 - comsumer\n");
             char strbuf[4];
             fgets(strbuf, sizeof(strbuf), stdin);
@@ -285,15 +292,10 @@ int main(void){
             user_type worker_code_temp = msg.user_type;
             printf("You entered: %i\n", msg.user_type);
 
-            // sending y or n
+            // sending y
             send(sockfd, &msg, sizeof(msg), 0);
 
-            if (ynchar == 'n'){
-                close(sockfd);
-                exit(EXIT_FAILURE);
-            }
-
-            // if i am worker i receive all warehouses to choose on whic one i am working
+            // if i am worker i receive all warehouses to choose on which one i am working
             if (worker_code_temp == WORKER){
                 i_am_worker_flg = 1;
 
@@ -351,7 +353,7 @@ int main(void){
         user_loop();
     }
     
-
+    CLR_SCRN
     close(sockfd);
 
     return 0;
