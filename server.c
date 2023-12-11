@@ -8,44 +8,11 @@ user_record check_users_credentials(char* login, char* password);
 int write_order_to_file(order order);
 int write_user_to_file(user_record user, int id_of_warehouse);
 
-// TODO: need to find username in file usersdb.txt and return 1, else return 0
-// example of record about one user in file
-// usersdb.txt
-// name_of_user
-// user_password
-// type_of_user
 int check_user_name(char* username);
-
-// WELL DONE: get all orders for user by name from file orders.txt
-// Need to allocate memmory and return array of all orders for user
-// One user can have more than 1 order, ochevidno
-// example about one order in file
-// orders.txt 
-// aboba - username
-// 0 - type of order
-// sklad2 - dest
-// sklad - srx
-// krytaia posilka - description
 order* get_orders_for_user(char* username);
-
-// TODO: find count of orders for user by username
 int get_count_of_orders(char* username);
-
-// TODO: get count of orders from warehouse.txt
-// warehouse.txt contains records like:
-// 1 - id of warehouse
-// Sklad123 - name of warehouse
-// You need to count of warehouses and return this number
 int get_count_of_warehouses();
-
-//WELL DONE: need to allocate memory for array of names of warehouses
-// and return this array of names, read file warehouse.txt
-// example how warehouse.txt looks like see above
 char** get_names_of_warehouses();
-
-
-// TODO: need to allocate memory for char array and find warehouse by id 
-// and return its name, example how warehouse.txt looks like see above
 char* get_warehouse_by_id(int id_of_warehouse);
 
 // replace order status to new by index
@@ -179,10 +146,10 @@ void *user_thread(void *param) {
                 }
                 free(warehouses);
 
-                send(sock2, &message, sizeof(message), 0);
+                recv(sock2, &message, sizeof(message), 0);
                 int id_of_warehouse = atoi(message.text);
                 char* warehouse = get_warehouse_by_id(id_of_warehouse);
-                printf("Worker choose %s!", warehouse);
+                printf("Worker choose %s!\n", warehouse);
                 free(warehouse);
                 write_user_to_file(user, id_of_warehouse);
             } else {
@@ -247,10 +214,8 @@ void *user_thread(void *param) {
                 }
 
             } else if (message.msg_type == GET_ORDERS_STATUS) {
-                //TODO: get count of orders for user from logisticdb.txt and then send it to user
                 int count_of_orders = get_count_of_orders(message.username);
                 order* orders = get_orders_for_user(message.username);
-                // orders = (order*)malloc(sizeof(order) * count_of_orders);
 
                 sprintf(message.text, "%d\n", count_of_orders);
                 send(sock2, &message, sizeof(message), 0);
@@ -259,7 +224,6 @@ void *user_thread(void *param) {
                     message.order = orders[i];
                     send(sock2, &message, sizeof(message), 0);
                 }
-                
                 free(orders);
 
             } else if (message.msg_type == EXITING) {
@@ -286,10 +250,16 @@ user_record check_users_credentials(char* login, char* password) {
     
     while ((fgets(user.user_name, USERNAME_LEN, file)) != NULL) {
         fgets(user.password, PASSWORD_LEN, file);
-        char temp[3];
-        fgets(temp, 3, file); // fgets read until n-1 chars, need read 2 chars: user.type and \n
-        user.type = temp[0] - '0';
-        
+        // char temp[3];
+        // fgets(temp, 3, file); // fgets read until n-1 chars, need read 2 chars: user.type and \n
+        // user.type = temp[0] - '0';
+        fscanf(file, "%d", &user.type);
+        if (user.type == WORKER) {
+            fscanf(file, "%d", &user.index_of_warehouse);
+        } else if (user.type == CONSUMER) {
+            user.index_of_warehouse = 0;
+        }
+        fgetc(file);
         if (STREQU(login, user.user_name)) {
             if (STREQU(password, user.password)) {
                 fclose(file);
@@ -417,7 +387,7 @@ int get_count_of_warehouses() {
     {
         i++;
     }
-    return i/2;
+    return i / 2;
 }
 
 char** get_names_of_warehouses() {
@@ -425,7 +395,7 @@ char** get_names_of_warehouses() {
     if ((fp = fopen(fileNameWarehouses, "r")) == NULL)
     {
         printf("The file could not be opened\n");
-        return -1;
+        return NULL;
     }
     int rows = get_count_of_warehouses();
     char** warehouse = (char**)malloc(rows * sizeof(char*));

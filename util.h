@@ -24,8 +24,8 @@
 #define SERVER_ADDR "127.0.0.1" //"192.168.29.167"
 #define STREQU(a,b)	(strcmp(a, b) == 0)
 
-char fileNameOrders[] = "orders.txt";
-char fileNameWarehouses[] = "warehouse.txt";
+#define fileNameOrders "orders.txt"
+#define fileNameWarehouses "warehouse.txt"
 
 typedef enum msg_types{
     MSG_AUTH, 
@@ -77,6 +77,7 @@ typedef struct user_record {
     char user_name[USERNAME_LEN];
     char password[PASSWORD_LEN];
     user_type type;
+    int index_of_warehouse;
 } user_record;
 
 typedef struct warehouse_record {
