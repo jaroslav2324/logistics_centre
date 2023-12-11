@@ -200,7 +200,7 @@ void *user_thread(void *param) {
         break;
 
     } default: {
-        printf("Server doesnt support this type of user!\n");
+        printf("Server doesn't support this type of user!\n");
     }
     }
 
@@ -465,24 +465,11 @@ order* get_orders(char* value, find_order_type parameter) {
         return NULL;
     }
 
-    int count_of_orders, i = 0, flag = 0;
-
-    switch (parameter) {
-    case USERNAME: {
-        count_of_orders = get_count_of_orders(value, parameter);
-        break;
-
-    } case DESTINATION: {
-        break;
-
-    } case POSITION: {
-        count_of_orders = get_count_of_orders(value, parameter);
-        break;
-
-    } default: {
-        perror("Incorrect type in get_count_of_orders() for searching!\n");
-        return NULL;
-    }
+    int i = 0, flag = 0;
+    int count_of_orders = get_count_of_orders(value, parameter);
+    if (count_of_orders == - 1) {
+        perror("Error int get_orders!\n");
+        return  NULL;
     }
     order* orders = (order*)malloc(sizeof(order) * count_of_orders);
 
