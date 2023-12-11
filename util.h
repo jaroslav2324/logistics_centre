@@ -15,17 +15,16 @@
 #define PASSWORD_LEN 32
 #define ADDRESS_LEN 128
 #define CONTENT_SIZE 128
-#define WAREHOUSE_LEN 32
-
+#define STR_FILE_LEN 128
 #define MSG_BUFF_SIZE 256
-//#define USER_NUMBER 3
 
 #define SERVER_PORT 48125
-#define SERVER_ADDR "192.168.29.167"//"127.0.0.1" //
+#define SERVER_ADDR "127.0.0.1" //"192.168.29.167"//
 #define STREQU(a,b)	(strcmp(a, b) == 0)
 
-#define fileNameOrders "orders.txt"
-#define fileNameWarehouses "warehouse.txt"
+#define ORDERS_FILE "orders.txt"
+#define WAREHOUSES_FILE "warehouses.txt"
+#define USERSDB_FILE "usersdb.txt"
 
 typedef enum msg_types{
     MSG_AUTH, 
@@ -54,14 +53,20 @@ typedef enum order_status{
     DELIVERED // user has taken order
 } order_status;
 
+typedef enum find_order_type {
+    USERNAME,
+    DESTINATION,
+    POSITION
+} find_order_type;
+
 // TODO: user write 
 typedef struct order{
     //int idx; 
     char username_of_receiver[USERNAME_LEN];
     order_status status;
-    char destination[64];
-    char position[64];
-    char content[64];
+    char destination[CONTENT_SIZE];
+    char position[CONTENT_SIZE];
+    char content[CONTENT_SIZE];
 } order;
 
 typedef struct message{

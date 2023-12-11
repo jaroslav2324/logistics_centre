@@ -6,28 +6,18 @@
 #include <unistd.h>
 
 void *user_thread(void *data);
+void requests_from_worker(int sock2, int index_of_warehouse);
+void requests_from_consumer(int sock2);
 user_record check_users_credentials(char* login, char* password);
 int write_order_to_file(order order);
 int write_user_to_file(user_record user, int id_of_warehouse);
 
 int check_user_name(char* username);
-order* get_orders_for_user(char* username);
-int get_count_of_orders_by_username(char* username);
 int get_count_of_warehouses();
 char** get_names_of_warehouses();
 char* get_warehouse_by_id(int id_of_warehouse);
-
-int get_count_of_orders_by_warehouse(char* warehouse);
-
-//TODO: need to allocate memory for orders like in get_orders_for_user()
-// and then find all orders with user_warehouse and return these
-// orders.txt
-// aboba - username_of_receiver
-// 0 - status
-// sklad2 - destination
-// sklad - user_warehouse
-// krytaia posilka - content
-order* get_orders_for_warehouse(char* user_warehouse);
+int get_count_of_orders(char* value, find_order_type parameter);
+order* get_orders(char* value, find_order_type parameter);
 
 // replace order status to new by index
 // POKA NE NADO
@@ -113,6 +103,7 @@ void *user_thread(void *param) {
     user_record user = check_users_credentials(message.username, message.text);
 
     if (STREQU(user.user_name, message.username)) {
+        // AUTHORIZATION
         if (STREQU(user.password, message.text)) {
             strcpy(message.text, "Successfully authorization!\n");
             message.username[strlen(message.username) - 1] = '\0';
@@ -131,11 +122,13 @@ void *user_thread(void *param) {
             close(sock2);
             pthread_exit(NULL);
         }
+
     } else {
+        // REGISTRATION
         strcpy(user.user_name, message.username);
         strcpy(user.password, message.text);
 
-        strcpy(message.text, "You're not registered! Do you want to register?(Y/N)\n");
+        strcpy(message.text, "You're not registered! Do you want to register?(y/n)\n");
         message.msg_type = REGISTRATION;
         send(sock2, &message, sizeof(message), 0); 
 
@@ -144,7 +137,8 @@ void *user_thread(void *param) {
         user.type = message.user_type;
         
         if (STREQU(message.text, "y")) {
-            if (user.type == WORKER) {
+            switch (user.type) {
+            case WORKER: {
                 int count_of_warehouses = get_count_of_warehouses();
                 char** warehouses = get_names_of_warehouses();
                 sprintf(message.text, "%d\n", count_of_warehouses);
@@ -167,8 +161,20 @@ void *user_thread(void *param) {
                 free(warehouse);
                 write_user_to_file(user, id_of_warehouse);
                 user.index_of_warehouse = id_of_warehouse;
-            } else {
+                break;
+
+            } case CONSUMER: {
                 write_user_to_file(user, 0);
+                break;
+                
+            } default: {
+                strcpy(message.text, "Wrong type of user entered!\n");
+                message.msg_type = FORBIDDEN;
+                send(sock2, &message, sizeof(message), 0);
+                shutdown(sock2, SHUT_RDWR);
+                close(sock2);
+                pthread_exit(NULL);
+            }
             }
 
             printf("Success registration!\n");
@@ -184,89 +190,105 @@ void *user_thread(void *param) {
         }
     }
 
-    if (user.type == WORKER) {
-        while (1) {
-            recv(sock2, &message, sizeof(message), 0);
+    switch (user.type) {
+    case WORKER: {
+        requests_from_worker(sock2, user.index_of_warehouse);
+        break;
 
-            if (message.msg_type == GET_ORDERS_WAREHOUSE) {
-                char* user_warehouse = get_warehouse_by_id(user.index_of_warehouse);
-                printf("User warehouse: %s", user_warehouse);
-                int count_of_orders_in_warehouse = get_count_of_orders_by_warehouse(user_warehouse);
-                printf("User count of orders: %d\n", count_of_orders_in_warehouse);
-                sprintf(message.text, "%d\n", count_of_orders_in_warehouse);
-                send(sock2, &message, sizeof(message), 0);
+    } case CONSUMER: {
+        requests_from_consumer(sock2);
+        break;
 
-                order* orders = get_orders_for_warehouse(user_warehouse);
-                for (int i = 0; i < count_of_orders_in_warehouse; ++i) {
-                    message.order = orders[i];
-                    send(sock2, &message, sizeof(message), 0);
-                }
-
-                free(user_warehouse);
-                free(orders);
-                printf("Server send orders from warehouse!\n");
-        
-            } else if (message.msg_type == CHANGE_ORDER_STATUS) {
-                
-
-            } else if (message.msg_type == EXITING) {
-                message.username[strlen(message.username) - 1] = '\0';
-                printf("Client %s exiting!\n", message.username);
-                break;
-            }
-        }
-    } else if (user.type == CONSUMER) {
-        while (1) {
-            // printf("Before recv int comsumer!\n");
-            recv(sock2, &message, sizeof(message), 0);
-
-            if (message.msg_type == CREATE_ORDER) {
-                //TODO: from yarik: do not let user to create order for himself
-                int code = check_user_name(message.order.username_of_receiver);
-                if (code) {
-                    message.order.status = CREATED;
-                    code = write_order_to_file(message.order);
-
-                    message.username[strlen(message.username) - 1] = '\0';
-                    printf("User %s create order!\n", message.username);
-                    printf("Username of receiver: %s", message.order.username_of_receiver);
-                    printf("Destination: %s", message.order.destination);
-                    printf("Position: %s", message.order.position);
-                    printf("Content about item: %s\n", message.order.content);
-
-                    message.msg_type = OK;
-                    send(sock2, &message, sizeof(message), 0);
-                } else {
-                    message.msg_type = BAD;
-                    send(sock2, &message, sizeof(message), 0);
-                    printf("User entered wr0ng name of receiver!\n");
-                }
-
-            } else if (message.msg_type == GET_ORDERS_STATUS) {
-                int count_of_orders = get_count_of_orders_by_username(message.username);
-                order* orders = get_orders_for_user(message.username);
-
-                sprintf(message.text, "%d\n", count_of_orders);
-                send(sock2, &message, sizeof(message), 0);
-
-                for (int i = 0; i < count_of_orders; ++i) {
-                    message.order = orders[i];
-                    send(sock2, &message, sizeof(message), 0);
-                }
-                free(orders);
-
-            } else if (message.msg_type == EXITING) {
-                message.username[strlen(message.username) - 1] = '\0';
-                printf("Client %s exiting!\n", message.username);
-                break;
-            }
-        }
-
-    } else {
-        printf("Server doesnt support this type!\n");
+    } default: {
+        printf("Server doesnt support this type of user!\n");
     }
+    }
+
     close(sock2);
     pthread_exit(NULL);
+}
+
+void requests_from_worker(int sock2, int index_of_warehouse) {
+    message message;
+    while (1) {
+        recv(sock2, &message, sizeof(message), 0);
+
+        if (message.msg_type == GET_ORDERS_WAREHOUSE) {
+            char* user_warehouse = get_warehouse_by_id(index_of_warehouse);
+            printf("User warehouse: %s", user_warehouse);
+            int count_of_orders_in_warehouse = get_count_of_orders(user_warehouse, POSITION);
+            printf("User count of orders: %d\n", count_of_orders_in_warehouse);
+            sprintf(message.text, "%d\n", count_of_orders_in_warehouse);
+            send(sock2, &message, sizeof(message), 0);
+
+            order* orders = get_orders(user_warehouse, POSITION);
+            for (int i = 0; i < count_of_orders_in_warehouse; ++i) {
+                message.order = orders[i];
+                send(sock2, &message, sizeof(message), 0);
+            }
+
+            free(user_warehouse);
+            free(orders);
+            printf("Server send orders from warehouse!\n");
+    
+        } else if (message.msg_type == CHANGE_ORDER_STATUS) {
+            //TODO: impl update order func and mb need to use index of order 
+
+        } else if (message.msg_type == EXITING) {
+            message.username[strlen(message.username) - 1] = '\0';
+            printf("Client %s exiting!\n", message.username);
+            break;
+        }
+    }
+}
+
+void requests_from_consumer(int sock2) {
+    message message;
+    while (1) {
+        // printf("Before recv int comsumer!\n");
+        recv(sock2, &message, sizeof(message), 0);
+
+        if (message.msg_type == CREATE_ORDER) {
+            //TODO: from yarik: do not let user to create order for himself
+            int code = check_user_name(message.order.username_of_receiver);
+            if (code) {
+                message.order.status = CREATED;
+                code = write_order_to_file(message.order);
+
+                message.username[strlen(message.username) - 1] = '\0';
+                printf("User %s create order!\n", message.username);
+                printf("Username of receiver: %s", message.order.username_of_receiver);
+                printf("Destination: %s", message.order.destination);
+                printf("Position: %s", message.order.position);
+                printf("Content about item: %s\n", message.order.content);
+
+                message.msg_type = OK;
+                send(sock2, &message, sizeof(message), 0);
+            } else {
+                message.msg_type = BAD;
+                send(sock2, &message, sizeof(message), 0);
+                printf("User entered wr0ng name of receiver!\n");
+            }
+
+        } else if (message.msg_type == GET_ORDERS_STATUS) {
+            int count_of_orders = get_count_of_orders(message.username, USERNAME);
+            order* orders = get_orders(message.username, USERNAME);
+
+            sprintf(message.text, "%d\n", count_of_orders);
+            send(sock2, &message, sizeof(message), 0);
+
+            for (int i = 0; i < count_of_orders; ++i) {
+                message.order = orders[i];
+                send(sock2, &message, sizeof(message), 0);
+            }
+            free(orders);
+
+        } else if (message.msg_type == EXITING) {
+            message.username[strlen(message.username) - 1] = '\0';
+            printf("Client %s exiting!\n", message.username);
+            break;
+        }
+    }
 }
 
 // return user_record if user was found in db
@@ -274,21 +296,20 @@ void *user_thread(void *param) {
 // return user_record with username and password contain '\0' chars if user doesnt exist
 user_record check_users_credentials(char* login, char* password) {
     FILE* file;
-    file = fopen("usersdb.txt", "r");
+    file = fopen(USERSDB_FILE, "r");
     user_record user;
     
     while ((fgets(user.user_name, USERNAME_LEN, file)) != NULL) {
         fgets(user.password, PASSWORD_LEN, file);
-        // char temp[3];
-        // fgets(temp, 3, file); // fgets read until n-1 chars, need read 2 chars: user.type and \n
-        // user.type = temp[0] - '0';
+
         fscanf(file, "%d", (int*)&user.type);
         if (user.type == WORKER) {
             fscanf(file, "%d", &user.index_of_warehouse);
         } else if (user.type == CONSUMER) {
             user.index_of_warehouse = 0;
         }
-        fgetc(file);
+        fgetc(file); // reading \n in the end of line
+
         if (STREQU(login, user.user_name)) {
             if (STREQU(password, user.password)) {
                 fclose(file);
@@ -309,7 +330,7 @@ user_record check_users_credentials(char* login, char* password) {
 
 int write_user_to_file(user_record user, int id_of_warehouse) {
     FILE* file;
-    file = fopen("usersdb.txt", "a");
+    file = fopen(USERSDB_FILE, "a");
     if (user.type == CONSUMER) {
         fprintf(file, "%s%s%d\n", user.user_name, user.password, user.type);
     } else {
@@ -321,142 +342,112 @@ int write_user_to_file(user_record user, int id_of_warehouse) {
 
 int write_order_to_file(order order) {
     FILE* file;
-    file = fopen("orders.txt", "a");
+    file = fopen(ORDERS_FILE, "a");
     fprintf(file, "%s%d\n%s%s%s", 
         order.username_of_receiver, order.status, order.destination, order.position, order.content);
     fclose(file);
     return 1;
 }
 
-order* get_orders_for_user(char* username) {
-    FILE* fp;
-    char line[USERNAME_LEN];
-    order_status lineStat = 1;
-    if ((fp = fopen(fileNameOrders, "r")) == NULL)
-    {
-        printf("The file could not be opened\n");
-        return NULL;
-        //return -1;
-    }
-    int count_of_orders = get_count_of_orders_by_username(username);
-    order* o = (order*)malloc(sizeof(order) * count_of_orders);
-    int i = 0;
-
-    //yarik mark: сомнительно, ноо ооокей
-    while (fgets(line, sizeof(line), fp) || i != count_of_orders) {
-        if (STREQU(line, username)) {
-            strcpy(o[i].username_of_receiver, line);
-
-            //fscanf(fp, "%d", &lineStat);
-            fscanf(fp, "%d", (int*)&lineStat);
-            o[i].status = lineStat;
-            fgets(line, sizeof(line), fp);
-
-            fgets(line, sizeof(line), fp);
-            strcpy(o[i].destination, line);
-
-            fgets(line, sizeof(line), fp);
-            strcpy(o[i].position, line);
-
-            fgets(line, sizeof(line), fp);
-            strcpy(o[i].content, line);
-
-            /*printf("%s %d\n %s %s %s", o[i].username_of_receiver, o[i].status, o[i].destination,
-                o[i].position, o[i].content); if need to proverka */
-            i++;
-        }
-    }
-    fclose(fp);
-    return o;
-}
-
 int check_user_name(char* username) {
     FILE* file;
-    file = fopen("usersdb.txt", "r");
+    file = fopen(USERSDB_FILE, "r");
     char str[USERNAME_LEN];
     int i = 0;
-    while (fgets(str, USERNAME_LEN, file))
-    {
-        if (STREQU(str, username) && (i % 3 == 0))
+    while (fgets(str, USERNAME_LEN, file)) {
+        if (STREQU(str, username) && (i % 3 == 0)) {
             return 1;
+        }
         i++;
     }
     return 0;
 }
 
-int get_count_of_orders_by_username(char* username) {
-    // COMMENT THIS IF YOU WANT TO USE check_user_name OUT OF THIS FUNCTION
-    if(!check_user_name(username))
-    {
-        printf("There\'s no user with username %s\n", username);
-        return -1;
-    }
-
-    FILE* file;
-    file = fopen("orders.txt", "r");
-    char str[USERNAME_LEN];
-    int i = 0;
-    int cnt = 0;
-    while (fgets(str, USERNAME_LEN, file))
-    {
-        if (STREQU(str, username) && (i % 5 == 0))
-            cnt++;
-        i++;
-    }
-    return cnt;
-}
-
 int get_count_of_warehouses() {
-    // Because warehouse.txt has one line for id and one line for name, to get count of warehouses I just divide number of lines by 2
+    // Because warehouse.txt has one line for id and one line for name, 
+    // to get count of warehouses I just divide number of lines by 2
     FILE* file;
-    file = fopen("warehouse.txt", "r");
-    char str[WAREHOUSE_LEN];
+    file = fopen(WAREHOUSES_FILE, "r");
+    char str[STR_FILE_LEN];
     int i = 0;
-    while (fgets(str, WAREHOUSE_LEN, file))
-    {
-        i++;
-    }
+    while (fgets(str, STR_FILE_LEN, file)) i++;
     return i / 2;
 }
 
 char** get_names_of_warehouses() {
     FILE* fp;
-    if ((fp = fopen(fileNameWarehouses, "r")) == NULL)
-    {
+    if ((fp = fopen(WAREHOUSES_FILE, "r")) == NULL) {
         printf("The file could not be opened\n");
         return NULL;
     }
     int rows = get_count_of_warehouses();
     char** warehouse = (char**)malloc(rows * sizeof(char*));
     for (int i = 0; i < rows; i++) {
-        warehouse[i] = (char*)malloc(64 * sizeof(char));
+        warehouse[i] = (char*)malloc(STR_FILE_LEN);
     }
-    char line[64];
+
+    char line[STR_FILE_LEN];
     int i = 0;
-    while (fgets(line, sizeof(line), fp)) {
-        fgets(line, sizeof(line), fp);
+    while (fgets(line, STR_FILE_LEN, fp)) {
+        fgets(line, STR_FILE_LEN, fp);
         strcpy(warehouse[i], line);
         i++;
     }
     return warehouse;
 }
 
+// parametr for searching in orders file can take: USERNAME, DESTINATION or POSTION 
+// value - value of parametr for searching
+int get_count_of_orders(char* value, find_order_type parameter) {
+    // COMMENT THIS IF YOU WANT TO USE check_user_name OUT OF THIS FUNCTION
+    // if (!check_user_name(username)) {
+    //     printf("There\'s no user with username %s\n", username);
+    //     return -1;
+    // }
+
+    FILE* file;
+    file = fopen(ORDERS_FILE, "r");
+    char str[USERNAME_LEN];
+    int i = 0, cnt = 0;
+    while (fgets(str, USERNAME_LEN, file)) {
+        ++i;
+        switch (parameter) {
+        case USERNAME: {
+            if ((i == 1) && STREQU(str, value)) cnt++;
+            break;
+            
+        } case DESTINATION: {
+            break;
+
+        } case POSITION: {
+            if ((i == 4) && STREQU(str, value)) cnt++;
+            break;
+
+        } default: {
+            perror("Incorrect type in get_count_of_orders() for searching!\n");
+            return -1;
+        }
+        }
+        if (i == 5) i = 0;
+    }
+    return cnt;
+}
+
+// return NULL, it needs to be handled
 char* get_warehouse_by_id(int id_of_warehouse) {
     // RESULT STRING HAS TO BE FREED AFTER USE!!!
     FILE* file;
-    file = fopen("warehouse.txt", "r");
+    file = fopen(WAREHOUSES_FILE, "r");
     // Convert int id to char* id to use STREQU
     char id[4];
     sprintf(id, "%d\n", id_of_warehouse);
 
-    char str[WAREHOUSE_LEN];
+    char str[STR_FILE_LEN];
     int i = 0;
-    while (fgets(str, WAREHOUSE_LEN, file))
-    {
-        if (STREQU(str, id) && (i % 2 == 0))
-        {
-            fgets(str, WAREHOUSE_LEN, file);
-            char *str_to_return = malloc(strlen(str)*sizeof(char));
+    while (fgets(str, STR_FILE_LEN, file)) {
+        if (STREQU(str, id) && (i % 2 == 0)) {
+            fgets(str, STR_FILE_LEN, file);
+            char *str_to_return = malloc(strlen(str));
             strcpy(str_to_return, str);
             return str_to_return;
         } 
@@ -464,61 +455,74 @@ char* get_warehouse_by_id(int id_of_warehouse) {
     return NULL;
 }
 
-int get_count_of_orders_by_warehouse(char* warehouse) {
-    FILE* file;
-    file = fopen("orders.txt", "r");
-    char str[USERNAME_LEN];
-    int i = 1;
-    int cnt = 0;
-    // printf("Input in func: %s with len %ld\n", warehouse, strlen(warehouse));
-    while (fgets(str, USERNAME_LEN, file) != NULL)
-    {
-        if (STREQU(str, warehouse) && (i % 4 == 0)) {
-            cnt++;
-        }
-        ++i;
-        if (i == 5) {
-            i = 0;
-        }
-    }
-    return cnt;
-}
-
-order* get_orders_for_warehouse(char* user_warehouse) {
+// return NULL, it needs to be handled
+order* get_orders(char* value, find_order_type parameter) {
     FILE* fp;
-    char line[4][64];
+    char line[4][STR_FILE_LEN];
     order_status status;
-    if ((fp = fopen(fileNameOrders, "r")) == NULL)
-    {
+    if ((fp = fopen(ORDERS_FILE, "r")) == NULL) {
         printf("The file could not be opened\n");
         return NULL;
     }
-    int count_of_orders = get_count_of_orders_by_warehouse(user_warehouse);
-    order* o = (order*)malloc(sizeof(order) * count_of_orders);
-    int i = 0;
-    printf("Warehouse like param: %s", user_warehouse);
-            //name
-    while (fgets(line[0], 64, fp) != NULL) {
+
+    int count_of_orders, i = 0, flag = 0;
+
+    switch (parameter) {
+    case USERNAME: {
+        count_of_orders = get_count_of_orders(value, parameter);
+        break;
+
+    } case DESTINATION: {
+        break;
+
+    } case POSITION: {
+        count_of_orders = get_count_of_orders(value, parameter);
+        break;
+
+    } default: {
+        perror("Incorrect type in get_count_of_orders() for searching!\n");
+        return NULL;
+    }
+    }
+    order* orders = (order*)malloc(sizeof(order) * count_of_orders);
+
+           //name
+    while (fgets(line[0], STR_FILE_LEN, fp) != NULL) {
         //status
         fscanf(fp, "%d", (int*)&status);
         fgetc(fp);
         //dest
-        fgets(line[1], 64, fp);
+        fgets(line[1], STR_FILE_LEN, fp);
         //postion
-        fgets(line[2], 64, fp);
+        fgets(line[2], STR_FILE_LEN, fp);
         //content
-        fgets(line[3], 64, fp);
+        fgets(line[3], STR_FILE_LEN, fp);
 
-        if (STREQU(line[2], user_warehouse)) { 
-            strcpy(o[i].username_of_receiver, line[0]);
-            o[i].status =  status;
-            strcpy(o[i].destination, line[1]);
-            strcpy(o[i].position, line[2]);
-            strcpy(o[i].content, line[3]);
+        switch (parameter) {
+        case USERNAME: {
+            if (STREQU(line[0], value)) flag = 1;
+            break;
+
+        } case DESTINATION: {
+            break;
+
+        } case POSITION: {
+            if (STREQU(line[2], value)) flag = 1;
+            break;
+        } 
+        }
+
+        if (flag) { 
+            strcpy(orders[i].username_of_receiver, line[0]);
+            orders[i].status =  status;
+            strcpy(orders[i].destination, line[1]);
+            strcpy(orders[i].position, line[2]);
+            strcpy(orders[i].content, line[3]);
             i++;
+            flag = 0;
         }         
     }
 
     fclose(fp);
-    return o;
+    return orders;
 }
