@@ -32,7 +32,17 @@ int find_last_index_of_order();
 // Need to find order by index and then erase old status to new_status
 int update_order(int order_index, order_status new_status);
 
-//TODO: check dest and position in order
+// TODO: need to check warehouse name by reading warehouses.txt
+// if warehouse name exist return 1
+// else return 0
+int check_warehouse_name(char* name);
+
+// TODO: edit check_user_name
+// need to check if username exist and user is not worker
+// usersdb.txt
+// zxc - username
+// 123 - password
+// 1 1 - first number: 0 - consumer or 1 - worker; second number: index of warehouse if user worker
 
 pthread_mutex_t mutex;
 
