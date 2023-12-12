@@ -8,6 +8,7 @@
 // set console text colour
 #define SET_TEXT_RED     printf("\033[91m");
 #define SET_TEXT_YELLOW  printf("\033[93m");
+#define SET_TEXT_MAGENTA  printf("\033[95m");
 #define SET_TEXT_DEFAULT printf("\033[39m");
 
 // not for formatting output, only for text
@@ -19,6 +20,13 @@ void printf_yellow(const char * str){
 // not for formatting output, only for text
 void printf_red(const char * str){
     SET_TEXT_RED
+    printf("%s", str);
+    SET_TEXT_DEFAULT
+}
+
+// not for formatting output, only for text
+void printf_magenta(const char * str){
+    SET_TEXT_MAGENTA
     printf("%s", str);
     SET_TEXT_DEFAULT
 }
@@ -55,6 +63,7 @@ int sockfd;
 int i_am_worker_flg = 0;
 
 char username[USERNAME_LEN];
+char my_warehouse_position[128];
 message msg; // buffer
 
 
@@ -151,14 +160,14 @@ void user_loop(){
 
                 CLR_SCRN
 
-                printf("You sent orders:\n\n");
+                printf_magenta("You sent orders:\n\n");
 
                 for (int cnt = 0; cnt < amount_of_orders; cnt++){
                     // msg_recv();
                     recv(sockfd, &msg, sizeof msg, MSG_WAITALL);
 
-                    char strbuf[30];
-                    sprintf(strbuf, "Order %2i:\n", cnt + 1);
+                    char strbuf[64];
+                    sprintf(strbuf, "Order %2i to %s", cnt + 1, msg.order.username_of_receiver);
 
                     printf_yellow(strbuf);
                     print_order(&msg.order);
@@ -182,14 +191,14 @@ void user_loop(){
 
                 CLR_SCRN
 
-                printf("Orders for you:\n\n");
+                printf_magenta("Orders for you:\n\n");
 
                 for (int cnt = 0; cnt < amount_of_orders; cnt++){
                     // msg_recv();
                     recv(sockfd, &msg, sizeof msg, MSG_WAITALL);
 
-                    char strbuf[30];
-                    sprintf(strbuf, "Order %2i:\n", cnt + 1);
+                    char strbuf[64];
+                    sprintf(strbuf, "Order %2i from %s", cnt + 1, msg.order.username_of_sender);
 
                     printf_yellow(strbuf);
                     print_order(&msg.order);
@@ -225,13 +234,13 @@ void worker_loop(){
 
             // display help
             case 'h':
-            printf("s - Show delivery(incoming and already in warehouse)\nc - Change delivery status\ne - exit\n");
+            printf("s - Show deliveryin warehouse\na - Show awaiting delivery\nc - Change delivery status\ne - exit\n");
             break;
 
             // request my stock info from server 
             case 's':
             {
-                // send request to get all delivery in warehouse and incoming delivery 
+                // send request to get all delivery in warehouse
                 msg_send(GET_ORDERS_WAREHOUSE);
 
                 // receive amount of orders
@@ -241,6 +250,38 @@ void worker_loop(){
                     printf_yellow("Amount of orders 0\n");
                     break;
                 }
+
+                // TODO printf_magenta
+
+                // receive orders
+                for (int cnt = 0; cnt < amount_of_orders; cnt++){
+                    // msg_recv();
+                    recv(sockfd, &msg, sizeof msg, MSG_WAITALL);
+
+                    // show order
+                    char strbuf[30];
+                    sprintf(strbuf, "Order %2i:\n", cnt + 1);
+                    printf_yellow(strbuf);
+                    print_order(&msg.order);
+                }
+            }
+            break;
+
+            // request awaiting delivery
+            case 'a':
+            {
+                // send request to get all incoming delivery 
+                msg_send(GET_ORDERS_AWAITING);
+
+                // receive amount of orders
+                msg_recv();
+                int amount_of_orders = atoi(msg.text);
+                if (amount_of_orders == 0){
+                    printf_yellow("Amount of orders 0\n");
+                    break;
+                }
+
+                // TODO printf_magenta
 
                 // receive orders
                 for (int cnt = 0; cnt < amount_of_orders; cnt++){
@@ -259,7 +300,7 @@ void worker_loop(){
             case 'c':
             {
                 // request all orders
-                // send request to get all delivery in warehouse and incoming delivery 
+                // send request to get all delivery in warehouse and incoming
                 msg_send(CHANGE_ORDER_STATUS);
 
                 // receive amount of orders
@@ -270,6 +311,8 @@ void worker_loop(){
                     break;
                 }
 
+                // array of orers
+                order* orders = (order*)malloc(sizeof(order) * amount_of_orders);
                 // receive orders
                 for (int cnt = 0; cnt < amount_of_orders; cnt++){
                     //msg_recv();
@@ -280,14 +323,33 @@ void worker_loop(){
                     sprintf(strbuf, "Order %2i:\n", cnt + 1);
                     printf_yellow(strbuf);
                     print_order(&msg.order);
+                    // save order
+                    orders[cnt] = msg.order;
                 }
 
                 // enter index of order 
-                int idx = read_positive_num(stdin, 0, amount_of_orders); 
+                printf_yellow("Enter number of order:\n");
+                int idx = read_positive_num(stdin, 0, amount_of_orders);
+                
+                printf("%i - CREATED\n%i - MOVING\n%i - READY TO TAKE\n%i - DELIVERED\nEnter new status:\n", 
+                (int)CREATED + 1, (int)MOVING + 1, (int)READY_TO_TAKE + 1, (int)DELIVERED + 1);
+                // enter new status
+                int status = read_positive_num(stdin, 0, 4);
 
-                // send index in text
-                sprintf(msg.text, "%i", idx);
+                // send index of order and new status
+                msg.order.index = idx;
+                msg.order.status = status - 1;
                 msg_send(CHANGE_ORDER_STATUS);
+
+                msg_recv();
+                if (msg.msg_type == OK){
+                    printf_yellow("Message updated\n");
+                }
+                else{
+                    printf_red("Error in message updating\n");
+                }
+
+                free(orders);
             }
             break;
 
