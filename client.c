@@ -25,7 +25,7 @@ void printf_red(const char * str){
 
 
 void print_order(order* order){
-    printf("Status - %i\n destination - %s current position - %s content - %s\n", order->status, order->destination,
+    printf("Index - %i\nStatus - %i\n destination - %s current position - %s content - %s\n", order->index, order->status, order->destination,
                  order->position, order->content);
 }
 
@@ -85,6 +85,7 @@ void user_loop(){
     // enter message from console
     char exitflag = 0;
     while(!exitflag){
+        
         printf("Enter operation(h for help)\n");
         // read first character
         char option = getchar();
@@ -97,7 +98,7 @@ void user_loop(){
             case 'h':
             {
                 CLR_SCRN
-                printf("n - Create new delivery\no - Check my delivery\ne - exit\n");
+                printf("n - Create new delivery\ns - Check delivery i sent\nr - Check delivery for me\ne - exit\n\n");
             }
             break;
 
@@ -115,6 +116,8 @@ void user_loop(){
                 fgets(msg.order.position, 64, stdin);
                 printf("Enter delivery content:\n");
                 fgets(msg.order.content, 64, stdin);
+                // copy my name to username of sender
+                strcpy(msg.order.username_of_sender, username);
 
                 // send
                 msg_send(CREATE_ORDER);
@@ -132,31 +135,66 @@ void user_loop(){
             }
             break;
 
-            //request my delivery from server
-            case 'o':
+            //request my delivery as sender from server
+            case 's':
+            {
+                msg_send(GET_ORDERS_STATUS_SENDER);
 
-            msg_send(GET_ORDERS_STATUS);
-
-            // wait for response
-            msg_recv();
-
-            int amount_of_orders = atoi(msg.text);
-            if (amount_of_orders == 0){
-                printf_yellow("Amount of orders 0\n");
-                break;
-            }
-
-            CLR_SCRN
-
-            for (int cnt = 0; cnt < amount_of_orders; cnt++){
+                // wait for amount of orders
                 msg_recv();
 
-                char strbuf[30];
-                sprintf(strbuf, "Order %2i:\n", cnt + 1);
-                printf_yellow(strbuf);
-                print_order(&msg.order);
-            }
+                int amount_of_orders = atoi(msg.text);
+                if (amount_of_orders == 0){
+                    printf_yellow("Amount of orders 0\n");
+                    break;
+                }
 
+                CLR_SCRN
+
+                printf("You sent orders:\n\n");
+
+                for (int cnt = 0; cnt < amount_of_orders; cnt++){
+                    // msg_recv();
+                    recv(sockfd, &msg, sizeof msg, MSG_WAITALL);
+
+                    char strbuf[30];
+                    sprintf(strbuf, "Order %2i:\n", cnt + 1);
+
+                    printf_yellow(strbuf);
+                    print_order(&msg.order);
+                }
+            }
+            break;
+
+            //request my delivery as receiver from server
+            case 'r':
+            {
+                msg_send(GET_ORDERS_STATUS_RECEIVER);
+
+                // wait for amount of orders
+                msg_recv();
+
+                int amount_of_orders = atoi(msg.text);
+                if (amount_of_orders == 0){
+                    printf_yellow("Amount of orders 0\n");
+                    break;
+                }
+
+                CLR_SCRN
+
+                printf("Orders for you:\n\n");
+
+                for (int cnt = 0; cnt < amount_of_orders; cnt++){
+                    // msg_recv();
+                    recv(sockfd, &msg, sizeof msg, MSG_WAITALL);
+
+                    char strbuf[30];
+                    sprintf(strbuf, "Order %2i:\n", cnt + 1);
+
+                    printf_yellow(strbuf);
+                    print_order(&msg.order);
+                }
+            }
             break;
 
             // exit 
@@ -176,6 +214,7 @@ void worker_loop(){
 // enter message from console
     char exitflag = 0;
     while(!exitflag){
+        
         printf("Enter operation(h for help)\n");
         // read first character
         char option = getchar();
@@ -205,7 +244,8 @@ void worker_loop(){
 
                 // receive orders
                 for (int cnt = 0; cnt < amount_of_orders; cnt++){
-                    msg_recv();
+                    // msg_recv();
+                    recv(sockfd, &msg, sizeof msg, MSG_WAITALL);
 
                     // show order
                     char strbuf[30];
@@ -232,7 +272,8 @@ void worker_loop(){
 
                 // receive orders
                 for (int cnt = 0; cnt < amount_of_orders; cnt++){
-                    msg_recv();
+                    //msg_recv();
+                    recv(sockfd, &msg, sizeof msg, MSG_WAITALL);
 
                     // show order
                     char strbuf[30];
@@ -367,7 +408,7 @@ int main(void){
                 printf("Enter index of warehouse:\n");
                 // read every warehouse and print
                 for (int cnt = 0; cnt < amount_of_warehouses; cnt++){
-                    //msg_recv();
+                    // waittall to wait all tcp segments
                     recv(sockfd, &msg, sizeof msg, MSG_WAITALL);
                     printf("Warehouse %2i: %s", cnt + 1, msg.text);
                 }
@@ -384,7 +425,7 @@ int main(void){
             else{
                 i_am_worker_flg = 0;
             }
-
+            CLR_SCRN
             // receive success registration message
             recv(sockfd, &msg, sizeof(msg), 0);
             printf("%s", msg.text);
@@ -398,6 +439,7 @@ int main(void){
         break;
 
         case AUTH_SUCCESS:
+            CLR_SCRN
             i_am_worker_flg = msg.user_type;
             printf("%s", msg.text);
         break;
