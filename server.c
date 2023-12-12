@@ -20,7 +20,7 @@ int get_count_of_orders(char* value, find_order_type parameter);
 order* get_orders(char* value, find_order_type parameter);
 int find_last_index_of_order();
 
-// TODO: replace order status to new by index
+// DONE: replace order status to new by index
 // orders.txt look like
 // 3 - index of order
 // gggg - username_of_sender
@@ -660,10 +660,6 @@ int find_last_index_of_order() {
     else return 0;
 }
 
-int update_order(int order_index, order_status new_status) {
-    return 1;
-}
-
 int check_warehouse_name(char* name)
 {
     FILE* file;
@@ -677,4 +673,26 @@ int check_warehouse_name(char* name)
         i++;
     }
     return 0;
+}
+
+int update_order(int order_index, order_status new_status) {
+    //return 0 if file dont open, return 1 if ok
+    FILE* fp;
+    if ((fp = fopen(ORDERS_FILE, "r+")) == NULL)
+    {
+        printf("The file could not be opened\n");
+        return 0;
+    }
+    int line[STR_FILE_LEN];
+    int lineNumber = 0;
+    while (fgets(line, sizeof(line), fp)) {
+        lineNumber++;
+        if (atoi(line) == order_index) {
+            fgets(line, STR_FILE_LEN, fp);
+            lineNumber += 3;
+            fseek(fp, strlen(line), SEEK_CUR);
+            fprintf(fp, "%d\n", new_status);
+            return 1;
+        }
+    }
 }
