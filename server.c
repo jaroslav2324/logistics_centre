@@ -441,10 +441,18 @@ int check_user_name(char* username) {
     file = fopen(USERSDB_FILE, "r");
     char str[USERNAME_LEN];
     int i = 0;
+    char username_flag = 0;
     while (fgets(str, USERNAME_LEN, file)) {
-        if (STREQU(str, username) && (i % 3 == 0)) {
-            return 1;
+        if (i % 3 == 0)
+        {
+            if (STREQU(str, username))
+            {
+                username_flag = 1;
+            }
+            else username_flag = 0;
         }
+        if (str[0] == '0' && (i % 3 == 2) && username_flag == 1)
+            return 1;
         i++;
     }
     return 0;
@@ -654,4 +662,19 @@ int find_last_index_of_order() {
 
 int update_order(int order_index, order_status new_status) {
     return 1;
+}
+
+int check_warehouse_name(char* name)
+{
+    FILE* file;
+    file = fopen(WAREHOUSES_FILE, "r");
+    char str[STR_FILE_LEN];
+    int i = 0;
+    while (fgets(str, STR_FILE_LEN, file))
+    {
+        if ((i % 2 == 0) && STREQU(str, name))
+            return 1;
+        i++;
+    }
+    return 0;
 }
