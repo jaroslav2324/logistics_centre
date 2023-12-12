@@ -39,7 +39,8 @@ typedef enum msg_types{
     DELETE_ORDER, // worker deletes order???
     GET_ORDERS_STATUS_SENDER,
     GET_ORDERS_STATUS_RECEIVER,
-    GET_ORDERS_WAREHOUSE
+    GET_ORDERS_WAREHOUSE,
+    GET_ORDERS_AWAITING
 } msg_types;
 
 typedef enum user_type {
@@ -58,7 +59,8 @@ typedef enum find_order_type {
     SENDER,
     RECEIVER,
     DESTINATION,
-    POSITION
+    POSITION, 
+    DEST_AND_POS
 } find_order_type;
 
 // TODO: user write 
