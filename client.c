@@ -1,6 +1,5 @@
 
 #include "util.h"
-#include <unistd.h>
 
 // clear screen
 #define CLR_SCRN system("clear");
@@ -23,7 +22,6 @@ void printf_red(const char * str){
     printf("%s", str);
     SET_TEXT_DEFAULT
 }
-
 // not for formatting output, only for text
 void printf_magenta(const char * str){
     SET_TEXT_MAGENTA
@@ -33,7 +31,7 @@ void printf_magenta(const char * str){
 
 
 void print_order(order* order){
-    printf("Index - %i\nStatus - %i\n destination - %s current position - %s content - %s\n", order->index, order->status, order->destination,
+    printf("Status - %i\n destination - %s current position - %s content - %s\n", order->status, order->destination,
                  order->position, order->content);
 }
 
