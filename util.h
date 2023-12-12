@@ -19,7 +19,7 @@
 #define MSG_BUFF_SIZE 256
 
 #define SERVER_PORT 48125
-#define SERVER_ADDR "192.168.29.167" //"127.0.0.1" //
+#define SERVER_ADDR "192.168.29.167"//"127.0.0.1" //
 #define STREQU(a,b)	(strcmp(a, b) == 0)
 
 #define ORDERS_FILE "orders.txt"
@@ -37,7 +37,7 @@ typedef enum msg_types{
     CREATE_ORDER, // worker creates order
     CHANGE_ORDER_STATUS, // worker changes status of order
     DELETE_ORDER, // worker deletes order???
-    GET_ORDERS_STATUS_SENDER, // user requests info about all orders???
+    GET_ORDERS_STATUS_SENDER,
     GET_ORDERS_STATUS_RECEIVER,
     GET_ORDERS_WAREHOUSE
 } msg_types;
@@ -55,7 +55,8 @@ typedef enum order_status{
 } order_status;
 
 typedef enum find_order_type {
-    USERNAME,
+    SENDER,
+    RECEIVER,
     DESTINATION,
     POSITION
 } find_order_type;
@@ -63,7 +64,7 @@ typedef enum find_order_type {
 // TODO: user write 
 typedef struct order{
     int index;
-    char username_of_sender[USERNAME_LEN]; 
+    char username_of_sender[USERNAME_LEN];
     char username_of_receiver[USERNAME_LEN];
     order_status status;
     char destination[CONTENT_SIZE];

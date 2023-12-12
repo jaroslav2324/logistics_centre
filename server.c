@@ -19,6 +19,8 @@ char* get_warehouse_by_id(int id_of_warehouse);
 int get_count_of_orders(char* value, find_order_type parameter);
 order* get_orders(char* value, find_order_type parameter);
 
+int find_last_index_of_order();
+
 // replace order status to new by index
 // POKA NE NADO
 int update_order(int order_idx, order* order);
@@ -250,6 +252,7 @@ void requests_from_consumer(int sock2) {
 
         if (message.msg_type == CREATE_ORDER) {
             //TODO: from yarik: do not let user to create order for himself
+            printf("Username of recevier: %s", message.order.username_of_receiver);
             int code = check_user_name(message.order.username_of_receiver);
             if (code) {
                 message.order.status = CREATED;
@@ -257,6 +260,7 @@ void requests_from_consumer(int sock2) {
 
                 message.username[strlen(message.username) - 1] = '\0';
                 printf("User %s create order!\n", message.username);
+                printf("Username of sender: %s", message.order.username_of_sender);
                 printf("Username of receiver: %s", message.order.username_of_receiver);
                 printf("Destination: %s", message.order.destination);
                 printf("Position: %s", message.order.position);
@@ -270,9 +274,9 @@ void requests_from_consumer(int sock2) {
                 printf("User entered wr0ng name of receiver!\n");
             }
 
-        } else if (message.msg_type == GET_ORDERS_STATUS) {
-            int count_of_orders = get_count_of_orders(message.username, USERNAME);
-            order* orders = get_orders(message.username, USERNAME);
+        } else if (message.msg_type == GET_ORDERS_STATUS_SENDER) {
+            int count_of_orders = get_count_of_orders(message.username, SENDER);
+            order* orders = get_orders(message.username, SENDER);
 
             sprintf(message.text, "%d\n", count_of_orders);
             send(sock2, &message, sizeof(message), 0);
@@ -283,7 +287,20 @@ void requests_from_consumer(int sock2) {
             }
             free(orders);
 
-        } else if (message.msg_type == EXITING) {
+        } else if (message.msg_type == GET_ORDERS_STATUS_RECEIVER) {
+            int count_of_orders = get_count_of_orders(message.username, RECEIVER);
+            order* orders = get_orders(message.username, RECEIVER);
+
+            sprintf(message.text, "%d\n", count_of_orders);
+            send(sock2, &message, sizeof(message), 0);
+
+            for (int i = 0; i < count_of_orders; ++i) {
+                message.order = orders[i];
+                send(sock2, &message, sizeof(message), 0);
+            }
+            free(orders);
+
+        }  else if (message.msg_type == EXITING) {
             message.username[strlen(message.username) - 1] = '\0';
             printf("Client %s exiting!\n", message.username);
             break;
@@ -342,8 +359,9 @@ int write_user_to_file(user_record user, int id_of_warehouse) {
 
 int write_order_to_file(order order) {
     FILE* file;
+    int last_index_of_file = find_last_index_of_order() + 1;
     file = fopen(ORDERS_FILE, "a");
-    fprintf(file, "%s%d\n%s%s%s", 
+    fprintf(file, "%d\n%s%s%d\n%s%s%s", last_index_of_file, order.username_of_sender,
         order.username_of_receiver, order.status, order.destination, order.position, order.content);
     fclose(file);
     return 1;
@@ -407,20 +425,24 @@ int get_count_of_orders(char* value, find_order_type parameter) {
 
     FILE* file;
     file = fopen(ORDERS_FILE, "r");
-    char str[USERNAME_LEN];
+    char str[STR_FILE_LEN];
     int i = 0, cnt = 0;
-    while (fgets(str, USERNAME_LEN, file)) {
+    while (fgets(str, STR_FILE_LEN, file)) {
         ++i;
         switch (parameter) {
-        case USERNAME: {
-            if ((i == 1) && STREQU(str, value)) cnt++;
+        case SENDER: {
+            if ((i == 2) && STREQU(str, value)) cnt++;
             break;
             
+        } case RECEIVER: {
+            if ((i == 3) && STREQU(str, value)) cnt++;
+            break;
+
         } case DESTINATION: {
             break;
 
         } case POSITION: {
-            if ((i == 4) && STREQU(str, value)) cnt++;
+            if ((i == 6) && STREQU(str, value)) cnt++;
             break;
 
         } default: {
@@ -428,7 +450,7 @@ int get_count_of_orders(char* value, find_order_type parameter) {
             return -1;
         }
         }
-        if (i == 5) i = 0;
+        if (i == 7) i = 0;
     }
     return cnt;
 }
@@ -458,7 +480,7 @@ char* get_warehouse_by_id(int id_of_warehouse) {
 // return NULL, it needs to be handled
 order* get_orders(char* value, find_order_type parameter) {
     FILE* fp;
-    char line[4][STR_FILE_LEN];
+    char line[6][STR_FILE_LEN];
     order_status status;
     if ((fp = fopen(ORDERS_FILE, "r")) == NULL) {
         printf("The file could not be opened\n");
@@ -466,6 +488,7 @@ order* get_orders(char* value, find_order_type parameter) {
     }
 
     int i = 0, flag = 0;
+    int index_of_order = 0;
     int count_of_orders = get_count_of_orders(value, parameter);
     if (count_of_orders == - 1) {
         perror("Error int get_orders!\n");
@@ -473,38 +496,57 @@ order* get_orders(char* value, find_order_type parameter) {
     }
     order* orders = (order*)malloc(sizeof(order) * count_of_orders);
 
-           //name
+           //index of order
     while (fgets(line[0], STR_FILE_LEN, fp) != NULL) {
+        index_of_order = atoi(line[0]);
+
+        // username of sender
+        fgets(line[1], STR_FILE_LEN, fp);
+
+        // username of receiver
+        fgets(line[2], STR_FILE_LEN, fp);
+
         //status
         fscanf(fp, "%d", (int*)&status);
         fgetc(fp);
+
         //dest
-        fgets(line[1], STR_FILE_LEN, fp);
-        //postion
-        fgets(line[2], STR_FILE_LEN, fp);
-        //content
         fgets(line[3], STR_FILE_LEN, fp);
 
+        //postion
+        fgets(line[4], STR_FILE_LEN, fp);
+
+        //content
+        fgets(line[5], STR_FILE_LEN, fp);
+
         switch (parameter) {
-        case USERNAME: {
-            if (STREQU(line[0], value)) flag = 1;
+        case SENDER: {
+            if (STREQU(line[1], value)) flag = 1;
+            break;
+
+        } case RECEIVER: {
+            if (STREQU(line[2], value)) flag = 1;
+            break;
+
             break;
 
         } case DESTINATION: {
             break;
 
         } case POSITION: {
-            if (STREQU(line[2], value)) flag = 1;
+            if (STREQU(line[4], value)) flag = 1;
             break;
         } 
         }
 
         if (flag) { 
-            strcpy(orders[i].username_of_receiver, line[0]);
+            orders[i].index = index_of_order;
+            strcpy(orders[i].username_of_sender, line[1]);
+            strcpy(orders[i].username_of_receiver, line[2]);
             orders[i].status =  status;
-            strcpy(orders[i].destination, line[1]);
-            strcpy(orders[i].position, line[2]);
-            strcpy(orders[i].content, line[3]);
+            strcpy(orders[i].destination, line[3]);
+            strcpy(orders[i].position, line[4]);
+            strcpy(orders[i].content, line[5]);
             i++;
             flag = 0;
         }         
@@ -512,4 +554,22 @@ order* get_orders(char* value, find_order_type parameter) {
 
     fclose(fp);
     return orders;
+}
+
+int find_last_index_of_order() {
+    FILE* file;
+    file = fopen(ORDERS_FILE, "r");
+    char str[STR_FILE_LEN];
+
+    int cnt = 0, res = 0, flag = 0;
+    while (fgets(str, STR_FILE_LEN, file) != NULL) {
+        cnt++;
+        if (cnt == 1) {
+            res = atoi(str);
+            flag = 1;
+        }
+        if (cnt == 7) cnt = 0;
+    }
+    if (flag == 1) return res;
+    else return 0;
 }
