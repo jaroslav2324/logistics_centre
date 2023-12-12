@@ -18,12 +18,21 @@ char** get_names_of_warehouses();
 char* get_warehouse_by_id(int id_of_warehouse);
 int get_count_of_orders(char* value, find_order_type parameter);
 order* get_orders(char* value, find_order_type parameter);
-
 int find_last_index_of_order();
 
-// replace order status to new by index
-// POKA NE NADO
-int update_order(int order_idx, order* order);
+// TODO: replace order status to new by index
+// orders.txt look like
+// 3 - index of order
+// gggg - username_of_sender
+// asd - username_of_receiver
+// 0 - order_status
+// Sklad123 - destination
+// Sklad33 - position
+// gleb - content
+// Need to find order by index and then erase old status to new_status
+int update_order(int order_index, order_status new_status);
+
+//TODO: check dest and position in order
 
 pthread_mutex_t mutex;
 
@@ -233,8 +242,57 @@ void requests_from_worker(int sock2, int index_of_warehouse) {
             free(orders);
             printf("Server send orders from warehouse!\n");
     
+        }  else if (message.msg_type == GET_ORDERS_AWAITING) {
+            char* user_warehouse = get_warehouse_by_id(index_of_warehouse);
+            printf("User warehouse: %s", user_warehouse);
+            int count_of_orders= get_count_of_orders(user_warehouse, DESTINATION);
+            printf("User count of orders: %d\n", count_of_orders);
+            sprintf(message.text, "%d\n", count_of_orders);
+            send(sock2, &message, sizeof(message), 0);
+
+            order* orders = get_orders(user_warehouse, DESTINATION);
+            for (int i = 0; i < count_of_orders; ++i) {
+                message.order = orders[i];
+                send(sock2, &message, sizeof(message), 0);
+            }
+
+            free(user_warehouse);
+            free(orders);
+            printf("Server send orders awaiting!\n");
+    
         } else if (message.msg_type == CHANGE_ORDER_STATUS) {
             //TODO: impl update order func and mb need to use index of order 
+            char* user_warehouse = get_warehouse_by_id(index_of_warehouse);
+            printf("User warehouse: %s", user_warehouse);
+            int count_of_orders = get_count_of_orders(user_warehouse, DEST_AND_POS);
+            printf("User count of orders: %d\n", count_of_orders);
+            sprintf(message.text, "%d\n", count_of_orders);
+            send(sock2, &message, sizeof(message), 0);
+
+            order* orders = get_orders(user_warehouse, DEST_AND_POS);
+            for (int i = 0; i < count_of_orders; ++i) {
+                message.order = orders[i];
+                send(sock2, &message, sizeof(message), 0);
+            }
+
+            free(user_warehouse);
+            free(orders);
+            printf("Server sends dest and pos orders!\n");
+
+            // wait for index and status of order
+            recv(sock2, &message, sizeof(message), 0);
+            order changed_order = message.order;
+            int last_index_of_order = find_last_index_of_order();
+            if (changed_order.index > last_index_of_order || changed_order.index < 1) {
+                printf("User entered a wrong index of order to change!\n");
+                message.msg_type = BAD;
+                send(sock2, &message, sizeof(message), 0);
+                continue;
+            }
+            update_order(changed_order.index, changed_order.status);
+            printf("Order's status was changed!\n");
+            message.msg_type = OK;
+            send(sock2, &message, sizeof(message), 0);
 
         } else if (message.msg_type == EXITING) {
             message.username[strlen(message.username) - 1] = '\0';
@@ -367,6 +425,7 @@ int write_order_to_file(order order) {
     return 1;
 }
 
+// TODO: check username and this user doesnt worker
 int check_user_name(char* username) {
     FILE* file;
     file = fopen(USERSDB_FILE, "r");
@@ -439,10 +498,16 @@ int get_count_of_orders(char* value, find_order_type parameter) {
             break;
 
         } case DESTINATION: {
+            if ((i == 5) && STREQU(str, value)) cnt++;
             break;
 
         } case POSITION: {
             if ((i == 6) && STREQU(str, value)) cnt++;
+            break;
+
+        } case DEST_AND_POS: {
+            if (((i == 5) && STREQU(str, value)) || 
+                ((i == 6) && STREQU(str, value))) cnt++;
             break;
 
         } default: {
@@ -531,12 +596,15 @@ order* get_orders(char* value, find_order_type parameter) {
             break;
 
         } case DESTINATION: {
+            if (STREQU(line[3], value)) flag = 1;
             break;
 
         } case POSITION: {
             if (STREQU(line[4], value)) flag = 1;
             break;
-        } 
+        } case DEST_AND_POS: {
+            if (STREQU(line[3], value) || STREQU(line[4], value)) flag = 1;
+        }
         }
 
         if (flag) { 
@@ -572,4 +640,8 @@ int find_last_index_of_order() {
     }
     if (flag == 1) return res;
     else return 0;
+}
+
+int update_order(int order_index, order_status new_status) {
+    return 1;
 }

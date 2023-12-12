@@ -59,7 +59,8 @@ typedef enum find_order_type {
     SENDER,
     RECEIVER,
     DESTINATION,
-    POSITION
+    POSITION, 
+    DEST_AND_POS
 } find_order_type;
 
 // TODO: user write 
