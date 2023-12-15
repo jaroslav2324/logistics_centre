@@ -335,7 +335,7 @@ void worker_loop(){
                 int status = read_positive_num(stdin, 0, 4);
 
                 // send index of order and new status
-                msg.order.index = idx;
+                msg.order.index = orders[idx - 1].index;
                 msg.order.status = status - 1;
                 msg_send(CHANGE_ORDER_STATUS);
 
