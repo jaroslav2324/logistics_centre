@@ -29,15 +29,33 @@ void printf_magenta(const char * str){
     SET_TEXT_DEFAULT
 }
 
+void print_status(order_status status){
+    switch (status)
+    {
+    case CREATED:
+        printf("CREATED");
+        break;
+    case MOVING:
+        printf("MOVING");
+        break;    
+    case READY_TO_TAKE:
+        printf("READY TO TAKE");
+        break;    
+    case DELIVERED:
+        printf("DELIVERED");
+        break;
+    default:
+        break;
+    }
+}
 
 void print_order(order* order){
-    printf("Status - %i\n destination - %s current position - %s content - %s\n", order->status, order->destination,
+    printf("Status - ");
+    print_status(order->status);
+    printf("\n destination - %s current position - %s content - %s\n", order->destination,
                  order->position, order->content);
 }
 
-void print_status(order_status status){
-    
-}
 
 // return positive(>0) int: lower_bound <= num <= upper_bound
 int read_positive_num(FILE* __restrict__ stream, int lower_bound, int upper_bound){
