@@ -40,7 +40,8 @@ typedef enum msg_types{
     GET_ORDERS_STATUS_SENDER,
     GET_ORDERS_STATUS_RECEIVER,
     GET_ORDERS_WAREHOUSE,
-    GET_ORDERS_AWAITING
+    GET_ORDERS_AWAITING,
+    TRANSFER_DELIVERY
 } msg_types;
 
 typedef enum user_type {

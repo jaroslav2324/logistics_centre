@@ -718,9 +718,10 @@ int update_order(int order_index, order_status new_status) {
     }
     char line[STR_FILE_LEN];
     int lineNumber = 0;
-    long position = 0;
+
     while (fgets(line, STR_FILE_LEN, fp) != NULL) {
         lineNumber++;
+        
         if ((atoi(line) == order_index) && lineNumber == 1) {
             fgets(line, STR_FILE_LEN, fp);
             fgets(line, STR_FILE_LEN, fp);
