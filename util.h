@@ -19,7 +19,7 @@
 #define MSG_BUFF_SIZE 256
 
 #define SERVER_PORT 48125
-#define SERVER_ADDR "192.168.29.167"//"127.0.0.1" //
+#define SERVER_ADDR "127.0.0.1" //"192.168.29.167"//
 #define STREQU(a,b)	(strcmp(a, b) == 0)
 
 #define ORDERS_FILE "orders.txt"
@@ -40,7 +40,8 @@ typedef enum msg_types{
     GET_ORDERS_STATUS_SENDER,
     GET_ORDERS_STATUS_RECEIVER,
     GET_ORDERS_WAREHOUSE,
-    GET_ORDERS_AWAITING
+    GET_ORDERS_AWAITING,
+    TRANSFER_DELIVERY
 } msg_types;
 
 typedef enum user_type {

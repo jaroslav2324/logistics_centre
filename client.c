@@ -35,6 +35,10 @@ void print_order(order* order){
                  order->position, order->content);
 }
 
+void print_status(order_status status){
+    
+}
+
 // return positive(>0) int: lower_bound <= num <= upper_bound
 int read_positive_num(FILE* __restrict__ stream, int lower_bound, int upper_bound){
 
@@ -350,6 +354,102 @@ void worker_loop(){
                 free(orders);
             }
             break;
+
+            // transfer to another warehouse
+            case 't':
+            {
+                //! DO NOT USE NOW
+                break;
+                // request all orders
+                // send request to get all delivery in warehouse and incoming
+                msg_send(TRANSFER_DELIVERY);
+
+                // receive amount of orders
+                msg_recv();
+                int amount_of_orders = atoi(msg.text);
+                if (amount_of_orders == 0){
+                    printf_yellow("Amount of orders 0\n");
+                    break;
+                }
+
+                // array of orers
+                order* orders = (order*)malloc(sizeof(order) * amount_of_orders);
+                // receive orders
+                for (int cnt = 0; cnt < amount_of_orders; cnt++){
+                    //msg_recv();
+                    recv(sockfd, &msg, sizeof msg, MSG_WAITALL);
+
+                    // show order
+                    char strbuf[30];
+                    sprintf(strbuf, "Order %2i:\n", cnt + 1);
+                    printf_yellow(strbuf);
+                    print_order(&msg.order);
+                    // save order
+                    orders[cnt] = msg.order;
+                }
+
+                // enter index of order 
+                printf_yellow("Enter number of order:\n");
+                int idx = read_positive_num(stdin, 0, amount_of_orders);
+
+
+                // receive warehouses to choose
+                // read amount of warehouses
+                msg_recv();
+                int amount_of_warehouses;
+
+                amount_of_warehouses = atoi(msg.text);
+                char ** warehouses = (char**)malloc(sizeof (char*) * amount_of_warehouses);
+                for (int i = 0; i < amount_of_warehouses; i++){
+                    warehouses[i] = (char *)malloc(MSG_BUFF_SIZE);
+                }
+
+                if (amount_of_warehouses <= 0){
+                    printf_red("NO WAREHOUSES RECEIVED\n");
+                }
+
+                printf("Enter index of next warehouse:\n");
+                // read every warehouse and print
+                for (int cnt = 0; cnt < amount_of_warehouses; cnt++){
+                    // waittall to wait all tcp segments
+                    recv(sockfd, &msg, sizeof msg, MSG_WAITALL);
+                    printf("Warehouse %2i: %s", cnt + 1, msg.text);
+                    strcpy(warehouses[cnt], msg.text);
+                }
+                printf("\n");
+                
+
+                printf("Enter index: ");
+                int idx_war = read_positive_num(stdin, 0, amount_of_warehouses);
+
+
+                // replace position and status
+                order ord = orders[idx];
+                strcpy(ord.position, warehouses[idx_war]);
+
+                //new status
+                int status = MOVING;
+
+                // send index of order and new status
+                ord.index = orders[idx - 1].index;
+                ord.status = status - 1;
+                msg.order = ord;
+                msg_send(TRANSFER_DELIVERY);
+
+                msg_recv();
+                if (msg.msg_type == OK){
+                    printf_yellow("Message updated\n");
+                }
+                else{
+                    printf_red("Error in message updating\n");
+                }
+
+                for (int i = 0; i < amount_of_warehouses; i++){
+                    free(warehouses[i]);
+                }
+                free(warehouses);
+                free(orders);
+            }
 
             // exit 
             case 'e':
