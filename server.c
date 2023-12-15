@@ -683,16 +683,19 @@ int update_order(int order_index, order_status new_status) {
         printf("The file could not be opened\n");
         return 0;
     }
-    int line[STR_FILE_LEN];
+    char line[STR_FILE_LEN];
     int lineNumber = 0;
-    while (fgets(line, sizeof(line), fp)) {
+    while (fgets(line, STR_FILE_LEN, fp) != 0) {
         lineNumber++;
-        if (atoi(line) == order_index) {
+        if ((atoi(line) == order_index) && lineNumber == 1) {
             fgets(line, STR_FILE_LEN, fp);
-            lineNumber += 3;
-            fseek(fp, strlen(line), SEEK_CUR);
+            fgets(line, STR_FILE_LEN, fp);
             fprintf(fp, "%d\n", new_status);
+            fclose(fp);
             return 1;
         }
+        if (lineNumber == 7)lineNumber = 0;
     }
+    fclose(fp);
+    return 0;
 }
