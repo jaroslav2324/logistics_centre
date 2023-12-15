@@ -1,5 +1,6 @@
 
 #include "util.h"
+#include <stdio.h>
 
 // clear screen
 #define CLR_SCRN system("clear");
@@ -31,8 +32,9 @@ void printf_magenta(const char * str){
 
 
 void print_order(order* order){
-    printf("Status - %i\n destination - %s current position - %s content - %s\n", order->status, order->destination,
-                 order->position, order->content);
+    // printf("Index of order: %d\n", order->index);
+    printf("Status - %i\n sender - %s receiver - %s destination - %s current position - %s content - %s\n", 
+    order->status, order->username_of_sender, order->username_of_receiver, order->destination, order->position, order->content);
 }
 
 // return positive(>0) int: lower_bound <= num <= upper_bound
@@ -335,7 +337,7 @@ void worker_loop(){
                 int status = read_positive_num(stdin, 0, 4);
 
                 // send index of order and new status
-                msg.order.index = idx;
+                msg.order.index = orders[idx - 1].index;
                 msg.order.status = status - 1;
                 msg_send(CHANGE_ORDER_STATUS);
 

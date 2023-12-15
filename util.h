@@ -19,7 +19,7 @@
 #define MSG_BUFF_SIZE 256
 
 #define SERVER_PORT 48125
-#define SERVER_ADDR "192.168.29.167"//"127.0.0.1" //
+#define SERVER_ADDR "127.0.0.1" //"192.168.29.167"//
 #define STREQU(a,b)	(strcmp(a, b) == 0)
 
 #define ORDERS_FILE "orders.txt"

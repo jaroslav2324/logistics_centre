@@ -20,29 +20,9 @@ int get_count_of_orders(char* value, find_order_type parameter);
 order* get_orders(char* value, find_order_type parameter);
 int find_last_index_of_order();
 
-// DONE: replace order status to new by index
-// orders.txt look like
-// 3 - index of order
-// gggg - username_of_sender
-// asd - username_of_receiver
-// 0 - order_status
-// Sklad123 - destination
-// Sklad33 - position
-// gleb - content
-// Need to find order by index and then erase old status to new_status
 int update_order(int order_index, order_status new_status);
 
-// TODO: need to check warehouse name by reading warehouses.txt
-// if warehouse name exist return 1
-// else return 0
 int check_warehouse_name(char* name);
-
-// TODO: edit check_user_name
-// need to check if username exist and user is not worker
-// usersdb.txt
-// zxc - username
-// 123 - password
-// 1 1 - first number: 0 - consumer or 1 - worker; second number: index of warehouse if user worker
 
 pthread_mutex_t mutex;
 
@@ -299,10 +279,19 @@ void requests_from_worker(int sock2, int index_of_warehouse) {
                 send(sock2, &message, sizeof(message), 0);
                 continue;
             }
-            update_order(changed_order.index, changed_order.status);
-            printf("Order's status was changed!\n");
-            message.msg_type = OK;
-            send(sock2, &message, sizeof(message), 0);
+            printf("Index of changed order: %d\n", changed_order.index);
+            printf("Status of changed order: %d\n", changed_order.status);
+        
+            int code = update_order(changed_order.index, changed_order.status);
+            if (code) {
+                printf("Order's status was changed!\n");
+                message.msg_type = OK;
+                send(sock2, &message, sizeof(message), 0);
+            } else {
+                printf("Order's status wasn't changed!\n");
+                message.msg_type = BAD;
+                send(sock2, &message, sizeof(message), 0);
+            }
 
         } else if (message.msg_type == EXITING) {
             message.username[strlen(message.username) - 1] = '\0';
@@ -321,10 +310,34 @@ void requests_from_consumer(int sock2) {
         if (message.msg_type == CREATE_ORDER) {
             //TODO: from yarik: do not let user to create order for himself
             printf("Username of recevier: %s", message.order.username_of_receiver);
-            int code = check_user_name(message.order.username_of_receiver);
-            if (code) {
+            // Check correctness of data from consumer
+            int codeOfUserName = check_user_name(message.order.username_of_receiver);
+            printf("Username from sender: %s\n", message.order.username_of_receiver);
+
+            int codeOfDest = check_warehouse_name(message.order.destination);
+            printf("Deset from sender: %s\n", message.order.destination);
+
+            int codeOfPos = check_warehouse_name(message.order.position);
+            printf("Pos from sender: %s\n", message.order.position);
+
+            // Check for dest and pos equals, if true -> send BAD status
+            if (STREQU(message.order.destination, message.order.position)) {
+                codeOfDest = 0;
+                codeOfPos = 0;
+            }
+
+            // Check for sender name and recv name
+            if (STREQU(message.order.username_of_receiver, message.order.username_of_sender)) {
+                codeOfUserName = 0;
+            }
+
+            printf("Status of name: %d\n", codeOfUserName);
+            printf("Status of dest: %d\n", codeOfDest);
+            printf("Status of pos: %d\n", codeOfPos);
+
+            if (codeOfUserName && codeOfDest && codeOfPos) {
                 message.order.status = CREATED;
-                code = write_order_to_file(message.order);
+                int code = write_order_to_file(message.order);
 
                 message.username[strlen(message.username) - 1] = '\0';
                 printf("User %s create order!\n", message.username);
@@ -339,7 +352,7 @@ void requests_from_consumer(int sock2) {
             } else {
                 message.msg_type = BAD;
                 send(sock2, &message, sizeof(message), 0);
-                printf("User entered wr0ng name of receiver!\n");
+                printf("User entered wr0ng data!\n");
             }
 
         } else if (message.msg_type == GET_ORDERS_STATUS_SENDER) {
@@ -451,10 +464,14 @@ int check_user_name(char* username) {
             }
             else username_flag = 0;
         }
-        if (str[0] == '0' && (i % 3 == 2) && username_flag == 1)
+        if (str[0] == '0' && (i % 3 == 2) && username_flag == 1) {
+            fclose(file);
             return 1;
+        }
         i++;
     }
+    fclose(file);
+
     return 0;
 }
 
@@ -466,6 +483,8 @@ int get_count_of_warehouses() {
     char str[STR_FILE_LEN];
     int i = 0;
     while (fgets(str, STR_FILE_LEN, file)) i++;
+    fclose(file);
+
     return i / 2;
 }
 
@@ -488,6 +507,8 @@ char** get_names_of_warehouses() {
         strcpy(warehouse[i], line);
         i++;
     }
+    fclose(fp);
+
     return warehouse;
 }
 
@@ -530,11 +551,13 @@ int get_count_of_orders(char* value, find_order_type parameter) {
 
         } default: {
             perror("Incorrect type in get_count_of_orders() for searching!\n");
+            fclose(file);
             return -1;
         }
         }
         if (i == 7) i = 0;
     }
+    fclose(file);
     return cnt;
 }
 
@@ -554,9 +577,13 @@ char* get_warehouse_by_id(int id_of_warehouse) {
             fgets(str, STR_FILE_LEN, file);
             char *str_to_return = malloc(strlen(str));
             strcpy(str_to_return, str);
+            fclose(file);
+
             return str_to_return;
         } 
     }
+    fclose(file);
+
     return NULL;
 }
 
@@ -656,6 +683,8 @@ int find_last_index_of_order() {
         }
         if (cnt == 7) cnt = 0;
     }
+    fclose(file);
+
     if (flag == 1) return res;
     else return 0;
 }
@@ -668,10 +697,14 @@ int check_warehouse_name(char* name)
     int i = 0;
     while (fgets(str, STR_FILE_LEN, file))
     {
-        if ((i % 2 == 0) && STREQU(str, name))
-            return 1;
         i++;
+        if (i == 2 && STREQU(str, name)) {
+            fclose(file);
+            return 1;
+        }
+        if (i == 2) i = 0;
     }
+    fclose(file);
     return 0;
 }
 
@@ -683,16 +716,23 @@ int update_order(int order_index, order_status new_status) {
         printf("The file could not be opened\n");
         return 0;
     }
-    int line[STR_FILE_LEN];
+    char line[STR_FILE_LEN];
     int lineNumber = 0;
-    while (fgets(line, sizeof(line), fp)) {
+    long position = 0;
+    while (fgets(line, STR_FILE_LEN, fp) != NULL) {
         lineNumber++;
-        if (atoi(line) == order_index) {
+        if ((atoi(line) == order_index) && lineNumber == 1) {
             fgets(line, STR_FILE_LEN, fp);
-            lineNumber += 3;
-            fseek(fp, strlen(line), SEEK_CUR);
-            fprintf(fp, "%d\n", new_status);
+            fgets(line, STR_FILE_LEN, fp);
+
+            fprintf(fp, "%d\n", new_status); 
+            fclose(fp);
+
             return 1;
-        }
+        } 
+        if (lineNumber == 7) lineNumber = 0;
     }
+    fclose(fp);
+
+    return 0;
 }

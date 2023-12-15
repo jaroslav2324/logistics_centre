@@ -7,4 +7,4 @@ Sklad15
 4
 Sklad99
 5
-SKlad101
+Sklad101
