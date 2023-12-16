@@ -45,6 +45,7 @@ void print_status(order_status status){
         printf("DELIVERED");
         break;
     default:
+        printf_red("NO STATUS");
         break;
     }
 }
