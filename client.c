@@ -1,5 +1,6 @@
 
 #include "util.h"
+#include <stdio.h>
 
 // clear screen
 #define CLR_SCRN system("clear");
@@ -51,10 +52,16 @@ void print_status(order_status status){
 }
 
 void print_order(order* order){
+<<<<<<< HEAD
+    // printf("Index of order: %d\n", order->index);
+    printf("Status - %i\n sender - %s receiver - %s destination - %s current position - %s content - %s\n", 
+    order->status, order->username_of_sender, order->username_of_receiver, order->destination, order->position, order->content);
+=======
     printf("Status - ");
     print_status(order->status);
     printf("\n destination - %s current position - %s content - %s\n", order->destination,
                  order->position, order->content);
+>>>>>>> eec886d67f6154794b9a8ed6203f675cde9a8e01
 }
 
 
