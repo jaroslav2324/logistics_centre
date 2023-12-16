@@ -160,7 +160,7 @@ void user_loop(){
                     printf_yellow("Delivery created\n");
                 }
                 else {
-                    printf_yellow("Error in delivery creation(wrong receiver name?)\n");
+                    printf_yellow("Error in delivery creation(wrong input)\n");
                 }
             }
             break;
